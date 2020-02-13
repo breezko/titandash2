@@ -1,0 +1,68 @@
+<!-- Include Eel Library -->
+<script type="text/javascript" src="/eel.js"></script>
+
+<head>
+    <title>Titandash</title>
+    <!-- Stylesheets. -->
+    <link rel="stylesheet" href="/css/bootstrap/bootstrap.css"/>
+    <link rel="stylesheet" href="/css/login.css"/>
+    <!-- Base Javascript -->
+    <script type="text/javascript" src="/js/jquery/jquery-3.4.1.min.js"></script>
+    <script type="text/javascript" src="/js/popper/popper.min.js"></script>
+    <script type="text/javascript" src="/js/bootstrap/bootstrap.js"></script>
+    <!-- Custom Javascript -->
+    <script type="text/javascript" src="/js/login.js"></script>
+</head>
+
+<body>
+
+<div class="alert-container"></div>
+
+<div class="loader">
+   <div class="h-100 d-flex justify-content-center">
+       <div class="align-self-center spinner-grow text-primary" role="status" style="width: 5rem; height: 5rem;"></div>
+   </div>
+</div>
+
+<div class="container" style="display: none;">
+    <div class="h-100 row">
+        <div class="col-sm-9 col-md-7 col-lg-5 mx-auto">
+            <div class="card card-signin my-5">
+                <div class="form-loader" style="display: none;">
+                    <div class="d-flex justify-content-center align-items-center">
+                        <div class="align-self-center spinner-grow text-primary" role="status"></div>
+                    </div>
+                </div>
+                <div id="loginCardBody" class="card-body">
+                    <div class="d-flex justify-content-center">
+                        <img src="https://raw.githubusercontent.com/becurrie/titandash/master/img/flame.png" alt="Logo" width="55" height="70">
+                    </div>
+                    <h5 class="card-title text-center">
+                        Titandash Login
+                    </h5>
+                    <form class="form-signin">
+                        <div class="form-label-group">
+                            <input type="text" id="inputUsername" class="form-control" placeholder="Username" required autofocus>
+                            <label for="inputUsername">Username</label>
+                        </div>
+
+                        <div class="form-label-group">
+                            <input type="password" id="inputToken" class="form-control" placeholder="Token" required>
+                            <label for="inputToken">Token</label>
+                        </div>
+
+                        <a id="submitLogin" class="btn btn-lg btn-primary btn-block text-uppercase text-white" type="button">Sign In</a>
+                        <hr>
+                        <a class="btn btn-sm btn-secondary btn-block text-uppercase" href="https://titandash.net" target="_blank" type="button">Register</a>
+
+                        <div class="errors-container" style="display: none;">
+                            <hr>
+                            <div class="errors"></div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
