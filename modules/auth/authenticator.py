@@ -12,16 +12,19 @@ class Authenticator(object):
     @staticmethod
     def authenticate(username, token):
         """
-        Attempt to authenticate the specified user.
-
-        # TODO: Use proper authentication backend to test these values.
-                Values returned here should determine whether or not
-                the user is "valid".
+        Attempt to authenticate the specified username and token.
         """
         return {
             "valid": True,
-            "valid_username": True,
-            "valid_token": True,
             "online": False,
             "license": {},
+        }
+
+    @staticmethod
+    def information(username, token):
+        """
+        Attempt to retrieve the user information for the specified user and their token.
+        """
+        return {
+            "configurations": []
         }

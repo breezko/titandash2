@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>{% block title %}{% endblock %}</title>
+
+        <!-- Base Stylesheets. -->
+        <link rel="stylesheet" href="/css/fontawesome-free/all.min.css">
+        <link rel="stylesheet" href="/css/bootstrap/bootstrap.min.css">
+        <!-- Custom Stylesheets. -->
+        {% block styles %}{% endblock %}
+
+        <!-- Include Eel.js (Not present in static web folder). -->
+        <script type="text/javascript" src="/eel.js"></script>
+        <!-- Generic Javascript. -->
+        <script type="text/javascript" src="/js/jquery/jquery-3.4.1.min.js"></script>
+        <script type="text/javascript" src="/js/jquery-easing/jquery-easing.js"></script>
+        <script type="text/javascript" src="/js/popper/popper.min.js"></script>
+        <script type="text/javascript" src="/js/bootstrap/bootstrap.js"></script>
+        <!-- Custom Javascript. -->
+        {% block scripts %}{% endblock %}
+    </head>
+    <body>
+        {% block content %}{% endblock %}
+    </body>
+</html>

@@ -43,8 +43,8 @@ $(document).ready(function() {
             }
             // Fade the error container in once we've added all our present errors
             // to the element.
-            elements.errorsContainer.fadeIn(50, function() {
-                enableForm();
+            enableForm(function() {
+                elements.errorsContainer.fadeIn(250);
             });
         });
     }
@@ -61,9 +61,9 @@ $(document).ready(function() {
     /**
      * Enable the login form, fading in all content and making them enabled, and also hiding the form loader.
      */
-    function enableForm() {
+    function enableForm(cb) {
         elements.formLoader.fadeOut(50, function() {
-            elements.cardBody.css("pointer-events", "all").fadeTo("fast", 1);
+            elements.cardBody.css("pointer-events", "all").fadeTo("fast", 1, cb);
         });
     }
 
@@ -84,13 +84,34 @@ $(document).ready(function() {
      */
     async function loadRememberedInformation() {
         let information = await eel.load_remembered_information()();
-        debugger;
 
         // Information is available, populate the values before showing the form.
         // Anything other than "null" means we have some information available.
         if (information !== null) {
-            elements.formUsername.val(information.__data__.username);
-            elements.formToken.val(information.__data__.token);
+            elements.formUsername.val(information.username);
+            elements.formToken.val(information.token);
+
+            let errors = [];
+            // Any licencing issues or validation issues that came up
+            // when the existing user was grabbed. Display.
+            if (!information.state.valid) {
+                errors.push({
+                    type: "warning",
+                    message: "Your login credentials are no longer valid."
+                });
+                if (information.state.online) {
+                    errors.push({
+                        type: "warning",
+                        message: "Your account is already signed in."
+                    });
+                }
+            }
+
+            // Create and display our errors if any are present from
+            // the remembered information available.
+            if (errors.length > 0) {
+                createErrors(errors)
+            }
         }
 
         // Fade out our loader and begin fading in the form itself.
@@ -138,8 +159,14 @@ $(document).ready(function() {
 
             // Information is present, let's attempt to validate the information entered
             // by the user, our eel library can handle this with a function.
-            let information = await eel.login(username, token)();
+            errors = await eel.login(username, token)();
 
+            if (errors.length > 0) {
+                return createErrors(errors);
+            }
+
+            // Login is successful, bring the user to the home page.
+            window.location = "index.html"
         }, 200);
     }
 

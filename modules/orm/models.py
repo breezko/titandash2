@@ -17,15 +17,6 @@ class BaseModel(Model):
     class Meta:
         database = _db
 
-    @property
-    def json(self):
-        """
-        Return the model as a json compliant dictionary.
-        """
-        return {
-            k: v for k, v in self.__dict__.items()
-        }
-
 
 class User(BaseModel):
     """
@@ -53,7 +44,7 @@ class User(BaseModel):
         if cls.is_available():
             # A user is available, let's check the current validation state
             # available for them, making sure that they are still valid.
-            return cls.grab(user=User.get()).state["valid"]
+            return cls.grab().state["valid"]
 
         # No user is available at all, invalid information present.
         return False
@@ -63,6 +54,8 @@ class User(BaseModel):
         """
         Attempt to grab the current user account and update it to reflect the specified email and token.
         """
+        if not username and not token and not user:
+            user = cls.get_or_none()
         if user:
             username = user.username
             token = user.token
@@ -72,12 +65,18 @@ class User(BaseModel):
         if not username or not token:
             raise ValueError("Username, Token are required args, unless a user is passed into function.")
 
+        data_dict = {
+            "username": username,
+            "token": token,
+            "state_json": json.dumps(Authenticator.authenticate(username=username, token=token))
+        }
+
         if not cls.is_available():
-            cls.create(username=username, token=token, state_json=json.dumps(Authenticator.authenticate(username=username, token=token)))
+            cls.create(**data_dict)
         # An account does currently exists, we can grab it and update the values before
         # attempting to validate or authenticate the user.
         else:
-            cls.update(username=username, token=token, state_json=json.dumps(Authenticator.authenticate(username=username, token=token)))
+            cls.get().update(**data_dict).execute()
 
         return cls.get()
 
@@ -87,6 +86,17 @@ class User(BaseModel):
         Attempt to return the current users state json as a python dictionary.
         """
         return json.loads(self.state_json)
+
+    @property
+    def json(self):
+        """
+        Return a json compliant dictionary with user information.
+        """
+        return {
+            "username": self.username,
+            "token": self.token,
+            "state": self.state
+        }
 
 
 _db.connect()

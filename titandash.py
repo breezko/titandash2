@@ -21,31 +21,24 @@ class TitandashApplication(object):
         """
         Initialize application.
         """
-        # Init Web Path.
-        self.EEL_WEB = EEL_WEB
-        # Login/Home HTML.
-        self.EEL_LOGIN = EEL_LOGIN
-        self.EEL_HOME = EEL_HOME
-        # Init/Start Options.
-        self.EEL_INIT_OPTIONS = EEL_INIT_OPTIONS
-        self.EEL_START_OPTIONS = EEL_START_OPTIONS
-
         # Initializing application through Eel module.
         # "EEL_WEB" represents our "web" folder, which contains all web server specific files.
-        eel.init(path=self.EEL_WEB, **self.EEL_INIT_OPTIONS)
+        eel.init(path=EEL_WEB, **EEL_INIT_OPTIONS)
 
-    def start(self):
+    @staticmethod
+    def start():
         """
         Attempting to "start" and open the application on the derived "page" (html file).
         """
         if User.is_valid():
-            _url = self.EEL_HOME
+            _url = EEL_HOME
         # If no user is currently in the database, or one is, but their account
         # is no longer valid, send the user to the login page.
         else:
-            _url = self.EEL_LOGIN
+            _url = EEL_LOGIN
 
-        eel.start(_url, **self.EEL_START_OPTIONS)
+        eel.start(_url, **EEL_START_OPTIONS)
 
 
-TitandashApplication().start()
+if __name__ == "__main__":
+    TitandashApplication().start()
