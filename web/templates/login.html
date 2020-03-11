@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Login
+{% endblock %}
+
+{% block styles %}
+    <link rel="stylesheet" href="/css/login.css"/>
+{% endblock %}
+
+{% block scripts %}
+    <script type="text/javascript" src="/js/login.js"></script>
+{% endblock %}
+
+{% block content %}
+    <body class="h-100">
+        <!-- Initial Loader. -->
+        <div class="h-100 loader">
+            <div class="h-100 d-flex justify-content-center">
+                <div class="align-self-center spinner-grow text-primary" role="status" style="width: 5rem; height: 5rem;"></div>
+            </div>
+        </div>
+
+        <!-- Login Form -->
+        <div class="container" style="display: none;">
+            <div class="h-100 row">
+                <div class="col-sm-9 col-md-7 col-lg-5 mx-auto">
+                    <div class="card card-signin my-5">
+                        <div class="form-loader" style="display: none;">
+                            <div class="d-flex justify-content-center align-items-center">
+                                <div class="align-self-center spinner-grow text-primary" role="status"></div>
+                            </div>
+                        </div>
+                        <div id="loginCardBody" class="card-body">
+                            <div class="d-flex justify-content-center">
+                                <img src="/flame.png" width="55" height="70"/>
+                            </div>
+                            <h5 class="card-title text-center">
+                                Titandash Login
+                            </h5>
+                            <form class="form-signin">
+                                <div class="form-label-group">
+                                    <input type="text" id="inputUsername" class="form-control" placeholder="Username" required autofocus>
+                                    <label for="inputUsername">Username</label>
+                                </div>
+
+                                <div class="form-label-group">
+                                    <input type="text" id="inputToken" class="form-control" placeholder="Token" required>
+                                    <label for="inputToken">Token</label>
+                                </div>
+                                <div class="text-center mb-2" style="margin-top: -12px;">
+                                    <a href="https://titandash.net/account/" target="_blank" class="text-secondary text-uppercase small">Forgot your token?</a>
+                                </div>
+
+                                <a id="submitLogin" class="btn btn-lg btn-primary btn-block text-uppercase text-white" type="button">Sign In</a>
+                                <hr class="m-2">
+                                <a class="btn btn-sm btn-secondary btn-block text-uppercase" href="https://titandash.net/auth/register/" target="_blank" type="button">Register</a>
+
+                                <div class="errors-container" style="display: none;">
+                                    <hr>
+                                    <div class="errors"></div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+
+{% endblock %}

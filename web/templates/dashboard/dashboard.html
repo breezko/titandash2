@@ -1,0 +1,467 @@
+{% extends "dashboard/base_dashboard.html" %}
+
+{% block additional_scripts %}
+    <!-- Bot Instances. -->
+    <script type="text/javascript" src="/js/dashboard/instances/instances.js"></script>
+    <!-- Settings. -->
+    <script type="text/javascript" src="/js/dashboard/settings/settings.js"></script>
+    <!-- Actions. -->
+    <script type="text/javascript" src="/js/dashboard/actions/actions.js"></script>
+    <!-- Queue Function. -->
+    <script type="text/javascript" src="/js/dashboard/queue-function/queueFunction.js"></script>
+    <!-- Selected Instance. -->
+    <script type="text/javascript" src="/js/dashboard/selected-instance/selectedInstance.js"></script>
+    <!-- Websockets. -->
+    <script type="text/javascript" src="/js/dashboard/websockets.js"></script>
+{% endblock %}
+
+{% block page_contents %}
+    <!-- Instance Selection Row -->
+    <div class="card shadow mb-4">
+        <!-- Card Header - Dropdown -->
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">
+                Bot Instances
+            </h6>
+            <div class="dropdown no-arrow">
+                <a class="dropdown-toggle" href="#" role="button" id="instancesDropdownMenuLink" data-toggle="dropdown"
+                   aria-haspopup="true" aria-expanded="false">
+                    <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                </a>
+                <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in"
+                     aria-labelledby="dropdownMenuLink">
+                    <div class="dropdown-header">Instance Options:</div>
+                    <a class="dropdown-item" id="dashboardInstanceAddButton" href="#">Add Instance</a>
+                </div>
+            </div>
+        </div>
+        <!-- Card Body -->
+        <div class="card-body">
+            <!-- Instance Loader -->
+            <div class="h-100" id="dashboardInstancesLoader">
+                <div class="h-100 d-flex justify-content-center">
+                    <div class="align-self-center spinner-grow text-primary" role="status"></div>
+                </div>
+            </div>
+            <!-- Instances Content -->
+            <div id="dashboardInstancesContent" style="display: none;">
+                <table id="dashboardInstancesTable" class="table table-sm table-hover">
+                    <!-- Dynamic -->
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings/Actions Row -->
+    <div class="row h-100">
+        <!-- Settings -->
+        <div class="col-xl-6 col-lg-6 h-100">
+            <div class="card shadow mb-4" style="min-height: 250px;">
+                <!-- Card Header -->
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Settings</h6>
+                </div>
+                <!-- Settings Card Body -->
+                <div class="card-body">
+                    <!-- Settings Loader -->
+                    <div class="h-100" id="dashboardSettingsLoader">
+                        <div class="h-100 d-flex justify-content-center" style="height: 130px !important;">
+                            <div class="align-self-center spinner-grow text-primary" role="status"></div>
+                        </div>
+                    </div>
+
+                    <!-- Settings Content -->
+                    <div id="dashboardSettingsContent" style="display: none;">
+                        <!-- Configuration -->
+                        <div class="form-group row">
+                            <label for="dashboardSettingsSelectConfiguration" class="col-sm-3 col-form-label" style="overflow-wrap: normal;">Configuration</label>
+                            <div class="col-sm-9">
+                                <select id="dashboardSettingsSelectConfiguration" class="form-control">
+                                    <!-- Dynamic Options -->
+                                </select>
+                            </div>
+                        </div>
+                        <!-- Window -->
+                        <div class="form-group row">
+                            <label for="dashboardSettingsSelectWindow" class="col-sm-3 col-form-label">Window</label>
+                            <div class="col-sm-9">
+                                <select id="dashboardSettingsSelectWindow" class="form-control">
+                                    <!-- Dynamic Options -->
+                                </select>
+                            </div>
+                        </div>
+                        <!-- Keyboard Shortcuts -->
+                        <div class="form-group row">
+                            <div class="col-sm-3"></div>
+                            <div class="col-sm-9">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="dashboardSettingsCheckboxShortcuts">
+                                    <label class="form-check-label" for="dashboardSettingsCheckboxShortcuts">
+                                        Keyboard Shortcuts
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="col-xl-6 col-lg-6 h-100">
+            <div class="card shadow mb-4 h-100" style="min-height: 250px;">
+                <!-- Card Header -->
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Actions</h6>
+                    <div class="dropdown no-arrow">
+                        <a class="dropdown-toggle" href="#" role="button" id="dashboardActionsDropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in"
+                             aria-labelledby="dashboardActionsDropdownMenuLink">
+                            <div class="dropdown-header">Actions Options:</div>
+                            <a id="dashboardActionsKillRunningInstance" class="dropdown-item" type="button">Kill Running Instance</a>
+                        </div>
+                    </div>
+                </div>
+                <!-- Actions Card Body -->
+                <div class="card-body h-100">
+                    <!-- Actions Loader -->
+                    <div class="h-100" id="dashboardActionsLoader">
+                        <div class="h-100 d-flex justify-content-center" style="height: 130px !important;">
+                            <div class="align-self-center spinner-grow text-primary" role="status"></div>
+                        </div>
+                    </div>
+
+                     <!-- Actions Content -->
+                    <div class="h-100" id="dashboardActionsContent" style="display: none;">
+                        <!-- Container For 3 Columns -->
+                        <div class="container h-100">
+                            <div class="row h-100" style="min-height: 130px;">
+                                <!-- Play -->
+                                <div class="col-sm-4 text-center my-auto">
+                                    <span id="dashboardActionsPlay" class="fa fa-4x fa-play text-success"></span>
+                                </div>
+                                <!-- Pause -->
+                                <div class="col-sm-4 text-center my-auto">
+                                    <span id="dashboardActionsPause" class="fa fa-4x fa-pause text-warning"></span>
+                                </div>
+                                <!-- Stop -->
+                                <div class="col-sm-4 text-center my-auto">
+                                    <span id="dashboardActionsStop" class="fa fa-4x fa-stop text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Queue Function Row -->
+    <div class="card shadow mb-4">
+        <!-- Card Header -->
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">Queue Function</h6>
+            <div class="dropdown no-arrow">
+                <a class="dropdown-toggle" href="#" role="button" id="dashboardQueueFunctionDropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                </a>
+                <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in"
+                     aria-labelledby="dashboardActionsDropdownMenuLink">
+                    <div class="dropdown-header">Queue Function Options:</div>
+                    <a id="dashboardQueueFunctionFlush" class="dropdown-item" type="button">Flush Queue</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Queue Function Card Body -->
+        <div class="card-body">
+            <!-- Queue Function Loader -->
+            <div class="h-100" id="dashboardQueueFunctionLoader" style="display: none;">
+                <div class="h-100 d-flex justify-content-center">
+                    <div class="align-self-center spinner-grow text-primary" role="status"></div>
+                </div>
+            </div>
+
+            <!-- Queue Function Search / Utils -->
+            <div id="dashboardQueueFunctionContent">
+                <div class="row">
+                    <!-- Search Function -->
+                    <div class="col col-sm-4 col-4">
+                         <input id="dashboardQueueFunctionSearch" type="text" class="form-control bg-light border-0 small" placeholder="Search...">
+                    </div>
+                    <!-- Utils -->
+                    <div class="col col-sm-8 col-8">
+                        <!-- ETA Choices -->
+                        <div id="dashboardQueueFunctionCustomOptions" style="display: contents;" class="float-right">
+                            <div class="input-group" style="z-index: 0 !important;">
+                                <div class="input-group-prepend">
+                                    <!-- ETA Now -->
+                                    <button disabled id="dashboardQueueFunctionNow" class="btn btn-primary" type="button">Now</button>
+                                </div>
+
+                                <div class="input-group-append">
+                                    <!-- ETA Custom -->
+                                    <button id="dashboardQueueFunctionCustom" class="btn btn-primary" style="border-top-right-radius: 5px; border-bottom-right-radius: 5px;" type="button">Custom</button>
+                                </div>
+
+                                <!-- ETA Custom Options -->
+                                <input disabled id="dashboardQueueFunctionCustomDuration" type="number" class="form-control" placeholder="Duration..." style="display: none;">
+                                <!-- Duration Type Options Dropdown -->
+                                <div class="input-group-append">
+                                    <button disabled id="dashboardQueueFunctionCustomDurationType" class="btn btn-primary dropdown-toggle" style="display: none;" data-toggle="dropdown">Seconds</button>
+                                    <div class="dropdown-menu">
+                                        <a id="dashboardQueueFunctionCustomDurationSeconds" class="dropdown-item dropdown-seconds">Seconds</a>
+                                        <a id="dashboardQueueFunctionCustomDurationMinutes" class="dropdown-item dropdown-minutes">Minutes</a>
+                                        <a id="dashboardQueueFunctionCustomDurationHours" class="dropdown-item dropdown-hours">Hours</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <hr/>
+                <!-- Queue Function Queueables Content -->
+                <div id="dashboardQueueFunctionQueueablesContent">
+                    <!-- Dynamic Queueables Here -->
+                </div>
+                <hr/>
+                <!-- Queue Function Queued Content -->
+                <div id="dashboardQueueFunctionQueuedContent">
+                    <!-- Base Table -->
+                    <table id="dashboardQueueFunctionQueuedTable" class="table table-sm table-hover table-borderless">
+                        <thead>
+                            <tr>
+                                <td>Function</td>
+                                <td>Queued</td>
+                                <td>ETA</td>
+                            </tr>
+                        </thead>
+                        <tbody id="dashboardQueueFunctionQueuedTableBody">
+                            <!-- Dynamic Content -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Instance Row -->
+    <div class="card shadow mb-4">
+        <!-- Card Header -->
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">Selected Instance</h6>
+        </div>
+
+        <!-- Selected Instance Card Body -->
+        <div class="card-body">
+            <!-- Selected Instance Loader -->
+            <div class="h-100" id="dashboardSelectedInstanceLoader">
+                <div class="h-100 d-flex justify-content-center">
+                    <div class="align-self-center spinner-grow text-primary" role="status"></div>
+                </div>
+            </div>
+
+            <!-- Selected Instance Content -->
+            <div id="dashboardSelectedInstanceContent" style="display: none;">
+                <h6 class="font-weight-bold">Generic Information</h6>
+                <!-- Base Information Table -->
+                <div id="dashboardSelectedInstanceBaseInformationTable">
+                    <table class="table table-titan table-sm table-hover w-100">
+                        <tbody>
+                            <tr>
+                                <td>Name</td>
+                                <td><strong id="dashboardSelectedInstanceBaseInformationNameValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>State</td>
+                                <td><strong id="dashboardSelectedInstanceBaseInformationStateValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Session</td>
+                                <td><strong><a href="#" id="dashboardSelectedInstanceBaseInformationSessionValue">------</a></strong></td>
+                            </tr>
+                            <tr>
+                                <td>Started</td>
+                                <td><strong id="dashboardSelectedInstanceBaseInformationStartedValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Function</td>
+                                <td><strong id="dashboardSelectedInstanceBaseInformationFunctionValue">------</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <hr/>
+                <h6 class="font-weight-bold">Last Prestige Information</h6>
+                <!-- Last Prestige Information -->
+                <div id="dashboardSelectedInstanceLastPrestigeTable">
+                    <table class="table table-titan table-sm table-hover w-100">
+                        <tbody>
+                            <tr>
+                                <td>Timestamp</td>
+                                <td><strong id="dashboardSelectedInstanceLastPrestigeTimestampValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Stage</td>
+                                <td><strong id="dashboardSelectedInstanceLastPrestigeStageValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Duration</td>
+                                <td><strong id="dashboardSelectedInstanceLastPrestigeDurationValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Artifact</td>
+                                <td><strong id="dashboardSelectedInstanceLastPrestigeArtifactValue">------</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <hr/>
+                <h6 class="font-weight-bold">Current Properties Information</h6>
+                <!-- Current Properties Information -->
+                <div id="dashboardSelectedInstanceCurrentPropertiesTable">
+                    <table class="table table-titan table-sm table-hover w-100">
+                        <tbody>
+                            <tr>
+                                <td>Log File</td>
+                                <td><strong><a href="#" id="dashboardSelectedInstanceCurrentPropertyLogFileValue">------</a></strong></td>
+                            </tr>
+                            <tr>
+                                <td>Configuration</td>
+                                <td><strong><a href="#" id="dashboardSelectedInstanceCurrentPropertyConfigurationValue">------</a></strong></td>
+                            </tr>
+                            <tr>
+                                <td>Window</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyWindowValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Shortcuts</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyShortcutsValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Current Stage</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyCurrentStageValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Newest Hero</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNewestHeroValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Raid Attack Reset</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyRaidAttackResetValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Next Break</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextBreakValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Next Break Resume</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextBreakResumeValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Next Artifact Upgrade</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextArtifactUpgradeValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Next Master Level</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextMasterLevelValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Next Heroes Level</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextHeroesLevelValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Next Skills Level</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextSkillsLevelValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Next Skills Activation</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextSkillsActivationValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Next Miscellaneous Actions</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextMiscellaneousActionsValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Next Headgear Swap</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextHeadgearSwapValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Next Perk Check</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextPerkCheckValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Next Timed Threshold Prestige</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextTimedThresholdPrestigeValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Next Randomized Threshold Prestige</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextRandomizedThresholdPrestigeValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Next Statistics Update</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextStatisticsUpdateValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Next Daily Achievement Check</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextDailyAchievementCheckValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Next Milestone Check</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextMilestoneCheckValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Next Heavenly Strike</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextHeavenlyStrikeValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Next Deadly Strike</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextDeadlyStrikeValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Next Hand Of Midas</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextHandOfMidasValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Next Fire Sword</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextFireSwordValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Next War Cry</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextWarCryValue">------</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Next Shadow Clone</td>
+                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextShadowCloneValue">------</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Instance Removal Modal-->
+    <div class="modal fade" id="dashboardRemoveInstanceModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Remove Instance</h5>
+                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to remove this instance?
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+                    <button class="btn btn-primary" id="dashboardConfirmRemoveInstance">Remove</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

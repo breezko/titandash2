@@ -3,14 +3,10 @@ import json
 
 class Authenticator(object):
     """
-    Authenticator.
-
-    Encapsulating the functionality used to authenticate users with an external system.
-
-    Users should be able to login with their email address and authentication token.
+    Encapsulate all the functionality used to authenticate users against an external backend system.
     """
     @staticmethod
-    def authenticate(username, token):
+    def get_state(username, token):
         """
         Attempt to authenticate the specified username and token.
         """
@@ -21,10 +17,15 @@ class Authenticator(object):
         }
 
     @staticmethod
-    def information(username, token):
+    def online(instance):
         """
-        Attempt to retrieve the user information for the specified user and their token.
+        Send a signal to the authentication backend, with information about the instance that's being set to online.
         """
-        return {
-            "configurations": []
-        }
+        return True
+
+    @staticmethod
+    def offline(instance):
+        """
+        Send a signal to the authentication backend, with information about the instance that's being set to offline.
+        """
+        return True

@@ -1,2 +1,13 @@
+django==1.10.2
 eel==0.12.2
 peewee==3.13.1
+jinja2==2.11.1
+pytesseract==0.3.2
+numpy==1.18.1
+opencv-python==4.2.0.32
+apscheduler==3.6.3
+imagehash==4.0
+pyautogui==0.9.48
+pywin32==224
+cachetools==4.0.0
+keyboard==0.13.4

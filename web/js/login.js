@@ -83,7 +83,7 @@ $(document).ready(function() {
      * and show the form before submitting the information.
      */
     async function loadRememberedInformation() {
-        let information = await eel.load_remembered_information()();
+        let information = await eel.login_load_remembered_information()();
 
         // Information is available, populate the values before showing the form.
         // Anything other than "null" means we have some information available.
@@ -165,8 +165,8 @@ $(document).ready(function() {
                 return createErrors(errors);
             }
 
-            // Login is successful, bring the user to the home page.
-            window.location = "index.html"
+            // Login is successful, bring the user to the dashboard initially.
+            window.location = "/templates/dashboard/dashboard.html"
         }, 200);
     }
 
