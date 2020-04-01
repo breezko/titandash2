@@ -1,0 +1,41 @@
+{% extends "dashboard/base_dashboard.html" %}
+
+{% block title %}
+    Prestiges
+{% endblock %}
+
+{% block additional_scripts %}
+    <script type="text/javascript" src="/js/prestiges.js"></script>
+{% endblock %}
+
+{% block page_contents %}
+    <!-- Prestiges Card -->
+    <div class="card shadow mb-4">
+        <!-- Prestiges Header -->
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Prestiges</h6>
+        </div>
+        <!-- Prestiges Card Body -->
+        <div class="card-body">
+            <!-- Prestiges Loader -->
+            <div class="h-100 prestigesTableLoader">
+                <div class="h-100 d-flex justify-content-center">
+                    <div class="align-self-center spinner-grow text-primary"></div>
+                </div>
+            </div>
+            <!-- Prestiges Content -->
+            <div id="prestigesContent" style="display: none;">
+                <!-- Prestiges Instance Selector Content -->
+                <div id="prestigesInstanceSelectorContainer" style="display: none;">
+                    <select class="form-control" id="prestigesInstanceSelectorSelect"></select>
+                    <hr/>
+                </div>
+                <div id="prestigesTableContainer">
+                    <table class="table table-sm table-hover" id="prestigesTable">
+                        <!-- Dynamic Content -->
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

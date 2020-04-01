@@ -1,14 +1,14 @@
-from settings import DATETIME_FORMAT, MAX_STAGE, ARTIFACT_IMAGE_DIR
+from settings import DATETIME_FORMAT, MAX_STAGE, RELATIVE_ARTIFACT_IMAGE_DIR
 
 from django.utils.text import slugify
 from django.db.models import (
-    Model, ForeignKey, CharField, TextField, BooleanField, NullBooleanField, PositiveIntegerField,
-    DateTimeField, DecimalField, DurationField, ManyToManyField, CASCADE
+    Avg, Model, ForeignKey, CharField, TextField, BooleanField, NullBooleanField,
+    PositiveIntegerField, DateTimeField, DecimalField, DurationField, ManyToManyField, CASCADE
 )
 
 from db.managers import (
-    UserManager, ArtifactManager, BotInstanceManager, ConfigurationManager, GlobalConfigurationManager,
-    ArtifactStatisticsManager, SessionManager, StatisticsManager, SessionStatisticsManager,
+    ApplicationStateManager, UserManager, ArtifactManager, BotInstanceManager, ConfigurationManager,
+    GlobalConfigurationManager, ArtifactStatisticsManager, SessionManager, StatisticsManager, SessionStatisticsManager,
     PrestigeStatisticsManager
 )
 from db.utilities import import_model_kwargs, generate_url
@@ -24,6 +24,15 @@ from decimal import Decimal
 
 import json
 import eel
+
+
+class ApplicationState(Model):
+    """
+    ApplicationState Database Model.
+    """
+    objects = ApplicationStateManager()
+
+    state = BooleanField(max_length=255, default=False)
 
 
 class User(Model):
@@ -69,7 +78,7 @@ class Tier(Model, ExportModelMixin):
     """
     Tier Database Model.
     """
-    tier = CharField(primary_key=True, max_length=255)
+    tier = CharField(max_length=255)
 
     def __str__(self):
         return self.name
@@ -109,6 +118,7 @@ class Tier(Model, ExportModelMixin):
         Tier as JSON.
         """
         return {
+            "pk": self.pk,
             "tier": self.tier,
             "name": self.name
         }
@@ -161,7 +171,7 @@ class Artifact(Model, ExportModelMixin):
         """
         # We need to remove any apostrophes that are present in the
         # artifact name, since image paths do not support these characters.
-        return "{path}/{name}.png".format(path=ARTIFACT_IMAGE_DIR, name=self.name.replace("'", ""))
+        return "{path}/{name}.png".format(path=RELATIVE_ARTIFACT_IMAGE_DIR, name=self.name.replace("'", ""))
 
     def json(self):
         """
@@ -221,7 +231,8 @@ class BotInstance(Model):
     stage = PositiveIntegerField(blank=True, null=True)
     newest_hero = CharField(max_length=255, blank=True, null=True)
     # Calculation Type Variables.
-    next_action_run = DateTimeField(blank=True, null=True)
+    next_fairy_tap = DateTimeField(blank=True, null=True)
+    next_minigames_tap = DateTimeField(blank=True, null=True)
     next_master_level = DateTimeField(blank=True, null=True)
     next_heroes_level = DateTimeField(blank=True, null=True)
     next_skills_level = DateTimeField(blank=True, null=True)
@@ -363,7 +374,7 @@ class BotInstance(Model):
             "configuration": self.configuration.json() if self.configuration else None,
             "window": self.window if self.window_json else None,
             "started": {
-                "datetime": self.started if self.started else None,
+                "datetime": self.started or None,
                 "formatted": self.started.strftime(format=DATETIME_FORMAT) if self.started else None
             },
             "function": self.function,
@@ -376,6 +387,14 @@ class BotInstance(Model):
             },
             "newest_hero": self.newest_hero or None,
             "next_artifact_upgrade": Artifact.objects.get(name=self.next_artifact_upgrade).json() if self.next_artifact_upgrade else None,
+            "next_fairy_tap": {
+                "datetime": self.next_fairy_tap or None,
+                "formatted": self.next_fairy_tap.strftime(format=DATETIME_FORMAT) if self.next_fairy_tap else None
+            },
+            "next_minigames_tap": {
+                "datetime": self.next_minigames_tap or None,
+                "formatted": self.next_minigames_tap.strftime(format=DATETIME_FORMAT) if self.next_minigames_tap else None
+            },
             "next_master_level": {
                 "datetime": self.next_master_level or None,
                 "formatted": self.next_master_level.strftime(format=DATETIME_FORMAT) if self.next_master_level else None
@@ -596,7 +615,6 @@ class Configuration(Model, ExportModelMixin):
         "post_action_min_wait": 1,
         "post_action_max_wait": 2,
         "enable_eggs": 3,
-        "enable_taps": 4,
         "enable_tournaments": 5,
         "enable_breaks": 6,
         "breaks_jitter": 7,
@@ -647,42 +665,44 @@ class Configuration(Model, ExportModelMixin):
         "enable_astral_awakening": 52,
         "enable_heart_of_midas": 53,
         "enable_flash_zip": 54,
-        "master_level_every_x_seconds": 55,
-        "hero_level_every_x_seconds": 56,
-        "enable_level_skills": 57,
-        "level_skills_every_x_seconds": 58,
-        "level_heavenly_strike_cap": 59,
-        "level_deadly_strike_cap": 60,
-        "level_hand_of_midas_cap": 61,
-        "level_fire_sword_cap": 62,
-        "level_war_cry_cap": 63,
-        "level_shadow_clone_cap": 64,
-        "enable_activate_skills": 65,
-        "master_level_on_start": 66,
-        "hero_level_on_start": 67,
-        "level_skills_on_start": 68,
-        "activate_skills_every_x_seconds": 69,
-        "repeat_taps": 70,
-        "repeat_minigames": 71,
-        "enable_perk_usage": 72,
-        "enable_perk_diamond_purchase": 73,
-        "enable_perk_only_tournament": 74,
-        "use_perks_every_x_hours": 75,
-        "use_perks_on_prestige": 76,
-        "enable_power_of_swiping": 77,
-        "enable_adrenaline_rush": 78,
-        "enable_make_it_rain": 79,
-        "enable_mana_potion": 80,
-        "enable_doom": 81,
-        "enable_mega_boost": 82,
-        "enable_clan_crate": 83,
-        "use_perks_on_start": 84,
-        "enable_headgear_swap": 85,
-        "headgear_swap_every_x_seconds": 86,
-        "headgear_swap_on_start": 87,
-        "log_enable": 88,
-        "log_level": 89,
-        "miscellaneous_actions_every_x_seconds": 90
+        "enable_forbidden_contract": 55,
+        "master_level_every_x_seconds": 56,
+        "hero_level_every_x_seconds": 57,
+        "enable_level_skills": 58,
+        "level_skills_every_x_seconds": 59,
+        "level_heavenly_strike_cap": 60,
+        "level_deadly_strike_cap": 61,
+        "level_hand_of_midas_cap": 62,
+        "level_fire_sword_cap": 63,
+        "level_war_cry_cap": 64,
+        "level_shadow_clone_cap": 65,
+        "enable_activate_skills": 66,
+        "master_level_on_start": 67,
+        "hero_level_on_start": 68,
+        "level_skills_on_start": 69,
+        "activate_skills_every_x_seconds": 70,
+        "repeat_minigames": 72,
+        "enable_perk_usage": 73,
+        "enable_perk_diamond_purchase": 74,
+        "enable_perk_only_tournament": 75,
+        "use_perks_every_x_hours": 76,
+        "use_perks_on_prestige": 77,
+        "enable_power_of_swiping": 78,
+        "enable_adrenaline_rush": 79,
+        "enable_make_it_rain": 80,
+        "enable_mana_potion": 81,
+        "enable_doom": 82,
+        "enable_mega_boost": 83,
+        "enable_clan_crate": 84,
+        "use_perks_on_start": 85,
+        "enable_headgear_swap": 86,
+        "headgear_swap_every_x_seconds": 87,
+        "headgear_swap_on_start": 88,
+        "log_enable": 89,
+        "log_level": 90,
+        "miscellaneous_actions_every_x_seconds": 91,
+        "fairy_tap_every_x_seconds": 92,
+        "minigames_every_x_seconds": 93,
     }
 
     # Create a dictionary of help texts that are associated with each field.
@@ -692,8 +712,8 @@ class Configuration(Model, ExportModelMixin):
         "name": "Specify a name for this configuration.",
         "post_action_min_wait": "Determine the minimum amount of seconds to wait after an in game function is finished executing.",
         "post_action_max_wait": "Determine the maximum amount of seconds to wait after an in game function is finished executing.",
+        "fairy_tap_every_x_seconds": "Specify the amount of seconds between each fairy tapping process.",
         "enable_eggs": "Enable the ability to collect and hatch eggs in game.",
-        "enable_taps": "Enable the ability to perform generic tapping in game.",
         "enable_tournaments": "Enable the ability to enter and participate in tournaments.",
         "miscellaneous_actions_every_x_seconds": "Specify how often miscellaneous actions should be executed in game.",
         "enable_breaks": "Enable the ability to take breaks in game.",
@@ -741,10 +761,12 @@ class Configuration(Model, ExportModelMixin):
         "prestige_random_min_time": "Specify the lower floor that will be used when calculating an amount of time to wait after a prestige threshold is reached.",
         "prestige_random_max_time": "Specify the upper ceiling that will be used when calculating an amount of time to wait after a prestige threshold is reached.",
         "enable_minigames": "Enable the ability to tap on different minigames in game.",
+        "minigames_every_x_seconds": "Specify the amount of seconds between each minigame tapping functionality.",
         "enable_coordinated_offensive": "Enable coordinated offensive tapping skill minigame.",
         "enable_astral_awakening": "Enable astral awakening tapping skill minigame.",
         "enable_heart_of_midas": "Enable heart of midas tapping skill minigame.",
         "enable_flash_zip": "Enable flash zip tapping skill minigame.",
+        "enable_forbidden_contract": "Enable forbidden contract tapping skill minigame.",
         "master_level_every_x_seconds": "Specify the amount of seconds to wait in between each sword master level process.",
         "hero_level_every_x_seconds": "Specify the amount of seconds to wait in between each heroes level process.",
         "enable_level_skills": "Enable the ability to level skills in game.",
@@ -760,7 +782,6 @@ class Configuration(Model, ExportModelMixin):
         "hero_level_on_start": "Should heroes be levelled once when a session is started.",
         "level_skills_on_start": "Should skills be levelled once when a session is started.",
         "activate_skills_every_x_seconds": "Specify the amount of seconds to wait in between each skills activation process.",
-        "repeat_taps": "Specify how many times the tapping loop should run when executed.",
         "repeat_minigames": "Specify how many times the minigames loop should run when executed.",
         "enable_perk_usage": "Enable the ability to use and purchase perks in game.",
         "enable_perk_diamond_purchase": "Enable the ability to purchase a perk with diamonds if you don't currently have one.",
@@ -792,8 +813,7 @@ class Configuration(Model, ExportModelMixin):
     post_action_min_wait = PositiveIntegerField(default=0)
     post_action_max_wait = PositiveIntegerField(default=1)
     # Generic Settings.
-    enable_taps = BooleanField(default=True)
-    repeat_taps = PositiveIntegerField(default=1)
+    fairy_tap_every_x_seconds = PositiveIntegerField(default=15)
     enable_eggs = BooleanField(default=True)
     enable_daily_rewards = BooleanField(default=True)
     enable_clan_crates = BooleanField(default=True)
@@ -801,11 +821,13 @@ class Configuration(Model, ExportModelMixin):
     miscellaneous_actions_every_x_seconds = PositiveIntegerField(default=900)
     # Minigame Settings.
     enable_minigames = BooleanField(default=False)
+    minigames_every_x_seconds = PositiveIntegerField(default=20)
     repeat_minigames = PositiveIntegerField(default=1)
     enable_coordinated_offensive = BooleanField(default=False)
     enable_astral_awakening = BooleanField(default=False)
     enable_heart_of_midas = BooleanField(default=False)
     enable_flash_zip = BooleanField(default=False)
+    enable_forbidden_contract = BooleanField(default=False)
     # Breaks Settings.
     enable_breaks = BooleanField(default=True)
     breaks_jitter = PositiveIntegerField(default=40)
@@ -1016,8 +1038,7 @@ class Configuration(Model, ExportModelMixin):
                 "post_action_max_wait": self.post_action_max_wait
             },
             "Generic": {
-                "enable_taps": self.enable_taps,
-                "repeat_taps": self.repeat_taps,
+                "fairy_tap_every_x_seconds": self.fairy_tap_every_x_seconds,
                 "enable_eggs": self.enable_eggs,
                 "enable_daily_rewards": self.enable_daily_rewards,
                 "enable_clan_crates": self.enable_clan_crates,
@@ -1025,11 +1046,13 @@ class Configuration(Model, ExportModelMixin):
             },
             "Minigames": {
                 "enable_minigames": self.enable_minigames,
+                "minigames_every_x_seconds": self.minigames_every_x_seconds,
                 "repeat_minigames": self.repeat_minigames,
                 "enable_coordinated_offensive": self.enable_coordinated_offensive,
                 "enable_astral_awakening": self.enable_astral_awakening,
                 "enable_heart_of_midas": self.enable_heart_of_midas,
-                "enable_flash_zip": self.enable_flash_zip
+                "enable_flash_zip": self.enable_flash_zip,
+                "enable_forbidden_contract": self.enable_forbidden_contract
             },
             "Breaks": {
                 "enable_breaks": self.enable_breaks,
@@ -1207,7 +1230,8 @@ class Prestige(Model):
         Prestige as JSON.
         """
         return {
-            "instance": self.instance.name,
+            "pk": self.pk,
+            "instance": self.instance.pk,
             "timestamp": {
                 "datetime": self.timestamp,
                 "formatted": self.timestamp.strftime(format=DATETIME_FORMAT),
@@ -1219,7 +1243,11 @@ class Prestige(Model):
             },
             "stage": self.stage or None,
             "artifact": self.artifact.json() if self.artifact else None,
-            "session": self.session.uuid
+            "session": {
+                "pk": self.session.pk,
+                "uuid": self.session.uuid,
+                "url": self.session.url
+            }
         }
 
 
@@ -1267,10 +1295,14 @@ class QueuedFunction(Model):
         """
         Override base save functionality, make sure we deal with durations and custom eta.
         """
+        duration = self.duration or 0
+        typ = self.duration_type or Duration.SECONDS.value
         # Make sure our duration is properly coerced into an integer
         # for use with the positive integer field.
-        self.duration = int(self.duration)
-        self.duration_type = self.duration_type.lower()
+        self.duration = int(duration)
+        self.duration_type = typ.lower()
+        # Update the datetime that the function was "queued"
+        # to be set to the current timestamp.
         self.queued = datetime.now()
 
         # Ensure the eta is generated successfully for our function.
@@ -1327,7 +1359,7 @@ class ArtifactOwned(Model):
         ArtifactOwned as JSON.
         """
         return {
-            "instance": self.instance.name,
+            "instance": self.instance.pk,
             "artifact": self.artifact.json(),
             "owned": self.owned
         }
@@ -1418,6 +1450,13 @@ class Session(Model):
         return "<Session: {session}>".format(session=self)
 
     @property
+    def url(self):
+        """
+        Retrieve the url that can be used to retrieve this session.
+        """
+        return generate_url(model=Session, key=self.pk),
+
+    @property
     def snapshot(self):
         """
         Return a dictionary containing the snapshot_json information present on the instance.
@@ -1474,8 +1513,9 @@ class Session(Model):
         Session as JSON.
         """
         return {
-            "instance": self.instance.name,
-            "url": generate_url(model=Session, key=self.pk),
+            "pk": self.pk,
+            "instance": self.instance.pk,
+            "url": self.url,
             "uuid": self.uuid,
             "version": self.version,
             "started": {
@@ -1485,12 +1525,15 @@ class Session(Model):
             },
             "stopped": {
                 "datetime": self.stopped or None,
-                "formatted": self.stopped.strftime(format=DATETIME_FORMAT) if self.stopped else None,
+                "formatted": self.stopped.strftime(format=DATETIME_FORMAT) if self.stopped else "N/A",
                 "epoch": self.stopped.timestamp() if self.stopped else None
+            },
+            "duration": {
+                "formatted": self.duration or None,
+                "seconds": self.duration.total_seconds() if self.duration != "N/A" else None
             },
             "log": self.log.json(),
             "configuration": self.snapshot,
-            "duration": self.duration,
             "prestiges": [prestige.json() for prestige in Prestige.objects.filter(session=self)]
         }
 
@@ -1515,7 +1558,7 @@ class SessionStatistics(Model):
         SessionStatistics as JSON.
         """
         return {
-            "instance": self.instance.name,
+            "instance": self.instance.pk,
             "sessions": [session.json() for session in self.sessions.all()]
         }
 
@@ -1555,7 +1598,7 @@ class ArtifactStatistics(Model):
         ArtifactStatistics as JSON.
         """
         return {
-            "instance": self.instance.name,
+            "instance": self.instance.pk,
             "artifacts": [artifact.json() for artifact in self.artifacts.all()]
         }
 
@@ -1579,8 +1622,13 @@ class PrestigeStatistics(Model):
         """
         PrestigeStatistics as JSON.
         """
+        _qs = self.prestiges.all()
+
         return {
-            "instance": self.instance.name,
+            "instance": self.instance.pk,
+            "count": _qs.count(),
+            "average_stage": _qs.aggregate(Avg("stage"))["stage__avg"],
+            "average_duration": _qs.aggregate(Avg("duration"))["duration__avg"],
             "prestiges": [prestige.json() for prestige in self.prestiges.all()]
         }
 
@@ -1816,8 +1864,10 @@ class BotStatistics(Model):
         BotStatistics as JSON.
         """
         return {
-            "ads_collected": self.ads_collected,
-            "properties": self.properties
+            "generic": {
+                "ads_collected": self.ads_collected
+            },
+            "functions": self.properties
         }
 
 
@@ -1845,7 +1895,7 @@ class Statistics(Model):
         Statistics as JSON.
         """
         return {
-            "instance": self.instance.name,
+            "instance": self.instance.pk,
             "session_statistics": self.session_statistics.json(),
             "artifact_statistics": self.artifact_statistics.json(),
             "prestige_statistics": self.prestige_statistics.json(),

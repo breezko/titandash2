@@ -14,7 +14,7 @@ from modules.bot.core.shortcuts import shortcuts_handler
 from modules.bot.core.exceptions import ServerTerminationEncountered, TerminationEncountered
 from modules.bot.core.attributes import DynamicAttributes
 from modules.bot.core.properties import Properties
-from modules.bot.core.decorators import not_in_transition, wait_afterwards, BotProperty as bot_property
+from modules.bot.core.decorators import wait_afterwards, BotProperty as bot_property
 from modules.bot.core.utilities import bot_logger, format_delta, delta_from_value_string
 from modules.bot.core.enumerations import (
     Button, SkillLevel, Skill, Perk, Panel, EquipmentTab,
@@ -30,6 +30,7 @@ from pytesseract import pytesseract
 from imagehash import average_hash
 
 from apscheduler.schedulers.base import STATE_RUNNING, STATE_STOPPED, STATE_PAUSED
+from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from pyautogui import FailSafeException
@@ -99,6 +100,8 @@ class Bot(object):
         self.session = Session.objects.generate(instance=self.instance, configuration=self.configuration, logger=self.logger)
         self.statistics = Statistics.objects.grab(instance=self.instance)
 
+        self.statistics.session_statistics.sessions.add(self.session)
+
         self.scheduler = self._setup_function_scheduler()
         self.enabled_skills = self._calculate_enabled_skills()
         self.minigame_order = self._calculate_minigame_order()
@@ -145,9 +148,9 @@ class Bot(object):
         # These should be populated at run time and available
         # when instances are initialized.
         for prop in bot_property.intervals():
-            _scheduler.add_job(func=getattr(self, prop["name"]), seconds=prop["interval"], trigger="interval", id=prop["name"])
+            _scheduler.add_job(func=getattr(self, prop["name"]), trigger=IntervalTrigger(seconds=prop["interval"]), id=prop["name"])
             # Log some information about the scheduled function that's been added to the scheduler.
-            self.logger.debug("function: {function} has been scheduled (every {interval} seconds).".format(function=prop["name"], interval=prop["interval"]))
+            self.logger.debug("function: {function} has been scheduled. (every {interval} second(s)).".format(function=prop["name"], interval=prop["interval"]))
 
         return _scheduler
 
@@ -169,7 +172,7 @@ class Bot(object):
         # of the current window.
         return self._last_snapshot
 
-    def _search(self, image, region=None, precision=0.8, position=False, im=None):
+    def _search(self, image, region=None, precision=0.8, position=False, im=None, image_name=None):
         """
         Attempt to search for the specified image(s) within the in game screen or region.
         """
@@ -207,11 +210,11 @@ class Bot(object):
         if _position[0] != -1:
             # The image was successfully found on the screen. Log some information about the
             # successful image search.
-            self.logger.debug("successfully found image: {image}.".format(image=image))
+            self.logger.debug("successfully found image: {image}.".format(image=image_name or image))
         else:
             # The image could not be found on the screen at all, log some information
             # about the un-successful image search.
-            self.logger.debug("could not find image: {image}.".format(image=image))
+            self.logger.debug("could not find image: {image}.".format(image=image_name or image))
 
         # Do we want to return both whether or not the image was found,
         # and the position that the image was found at?
@@ -286,16 +289,21 @@ class Bot(object):
         except (ValueError, TypeError):
             self._advanced_start = None
 
-        if self._advanced_start > MAX_STAGE:
-            # The advanced start we parsed out is larger than the actual
-            # current in game stage cap, safe to say a malformed string
-            # was grabbed, let's just fallback to none value.
-            self.logger.warning("advanced start: {stage} is greater than the stage cap: {max_stage}, defaulting to none.".format(
-                stage=stage, max_stage=MAX_STAGE)
-            )
-            # Set advanced start to a zero value.
-            # At least allows us to skip functionality if needed.
-            self._advanced_start = None
+        if self._advanced_start:
+            if self._advanced_start > MAX_STAGE:
+                # The advanced start we parsed out is larger than the actual
+                # current in game stage cap, safe to say a malformed string
+                # was grabbed, let's just fallback to none value.
+                self.logger.warn("advanced start: {stage} is greater than the stage cap: {max_stage}, defaulting to none.".format(
+                    stage=stage, max_stage=MAX_STAGE)
+                )
+                # Set advanced start to a zero value.
+                # At least allows us to skip functionality if needed.
+                self._advanced_start = None
+        else:
+            # Log some information about the fact that the advanced
+            # start value is non truthy (probably none type).
+            self.logger.warn("invalid advanced start value was parsed: {value}.".format(value=self._advanced_start))
 
     def _calculate_minigame_order(self):
         """
@@ -306,10 +314,11 @@ class Bot(object):
         # Each minigame will use its own key, based on the configuration boolean
         # present to enable or disable each one.
         for minigame, enabled in [
-            [Minigame.COORDINATED_OFFENSIVE, self.configuration.enable_coordinated_offensive],
-            [Minigame.ASTRAL_AWAKENING, self.configuration.enable_astral_awakening],
-            [Minigame.HEART_OF_MIDAS, self.configuration.enable_heart_of_midas],
-            [Minigame.FLASH_ZIP, self.configuration.enable_flash_zip]
+            [Minigame.COORDINATED_OFFENSIVE.value, self.configuration.enable_coordinated_offensive],
+            [Minigame.ASTRAL_AWAKENING.value, self.configuration.enable_astral_awakening],
+            [Minigame.HEART_OF_MIDAS.value, self.configuration.enable_heart_of_midas],
+            [Minigame.FLASH_ZIP.value, self.configuration.enable_flash_zip],
+            [Minigame.FORBIDDEN_CONTRACT.value, self.configuration.enable_forbidden_contract]
         ]:
             if enabled:
                 _minigames.append(minigame)
@@ -461,7 +470,7 @@ class Bot(object):
         """
         Calculate when the next timed prestige will take place.
         """
-        self._calculate(attr="next_prestige", interval=self.configuration.prestige_x_minutes)
+        self._calculate(attr="next_prestige", interval=self.configuration.prestige_x_minutes * 60)
 
     @bot_property(queueable=True, tooltip="Calculate the next time that the perk activation process will take place.")
     def calculate_next_perk_check(self):
@@ -515,7 +524,7 @@ class Bot(object):
         """
         Calculate when the next statistics update process will take place.
         """
-        self._calculate(attr="next_statistics_update", interval=self.configuration.update_statistics_every_x_minutes)
+        self._calculate(attr="next_statistics_update", interval=self.configuration.update_statistics_every_x_minutes * 60)
 
     @bot_property(queueable=True, tooltip="Calculate the next time that the miscellaneous actions process will take place.")
     def calculate_next_miscellaneous_actions(self):
@@ -573,13 +582,28 @@ class Bot(object):
                 time_2=format_delta(next_break_res - now)
             ))
 
-    @bot_property(interval=60, wrap_name=False)
+    @bot_property(queueable=True, tooltip="Calculate the next time that the fairy tapping process will take place.")
+    def calculate_next_fairy_tap(self):
+        """
+        Calculate when the next fairy tapping process will take place.
+        """
+        self._calculate(attr="next_fairy_tap", interval=self.configuration.fairy_tap_every_x_seconds)
+
+    @bot_property(queueable=True, tooltip="Calculate the next time that the minigame tapping process will take place.")
+    def calculate_next_minigames_tap(self):
+        """
+        Calculate when the next minigame tapping process will take place.
+        """
+        if self.configuration.enable_minigames:
+            self._calculate(attr="next_minigames_tap", interval=self.configuration.minigames_every_x_seconds)
+
+    @bot_property(interval=5, wrap_name=False)
     def parse_current_stage(self):
         """
         Attempting to update the current stage in game.
         """
         _result = pytesseract.image_to_string(
-            image=self._process(scale=5, threshold=100, region=self.regions.stage_ocr, use_current=True),
+            image=self._process(scale=5, threshold=150, region=self.regions.stage_ocr, use_current=True),
             config="--psm 7 nobatch digits"
         )
 
@@ -606,8 +630,7 @@ class Bot(object):
             self._last_stage = self.properties.stage
             self.properties.stage = _result
 
-    @not_in_transition
-    @bot_property(queueable=True, tooltip="Parse out the current levels of skills currently in game.")
+    @bot_property(queueable=True, tooltip="Parse out the current levels of skills currently in game.", transition=True)
     def parse_current_skills(self, skill=None):
         """
         Attempting to parse out the level of each skill in game.
@@ -641,7 +664,7 @@ class Bot(object):
                     _result = int(_result)
                 except ValueError:
                     self.prestige_skills_levels[_skill] = 0
-                    self.logger.warning("skill: {skill} was parsed incorrectly, defaulting to level 0 instead...".format(skill=_skill))
+                    self.logger.warn("skill: {skill} was parsed incorrectly, defaulting to level 0 instead...".format(skill=_skill))
                     continue
 
                 # Update the current skill level for current skill in loop.
@@ -678,36 +701,40 @@ class Bot(object):
             self.logger.info("no owned artifacts available, attempting to parse owned artifacts from game...")
             # Parse artifacts and try to grab them again.
             self.parse_artifacts()
-            self.get_upgrade_artifacts()
+            # Grab owned artifacts again after parsing
+            # has taken place.
+            artifacts = self.statistics.artifact_statistics.owned()
 
-            # Owned artifacts still aren't present after we've attempted
-            # to parse artifacts from the game, disable this functionality for the session.
-            if not self.owned_artifacts:
-                self.logger.warning("no artifacts were found after parsing, disabling artifact purchase for this session.")
-                # Disable and set list to an empty list.
-                self.configuration.enable_artifact_upgrade = False
-                self.owned_artifacts = _lst
+        # If no artifacts are available at all to upgrade, let's default
+        # to disabling the functionality completely.
+        # Owned artifacts still aren't present after we've attempted
+        # to parse artifacts from the game, disable this functionality for the session.
+        if artifacts.count() == 0:
+            self.logger.warn("no artifacts were found after parsing, disabling artifact purchase for this session.")
+            # Disable and set list to an empty list.
+            self.configuration.enable_artifact_upgrade = False
+            self.owned_artifacts = _lst
+        else:
+            # Generate the list with the actual artifacts that will be upgraded
+            # in game when a prestige takes place. Making sure we exclude max level artifacts
+            # and filter on artifacts in the tier specified, or specific artifacts chosen.
+            _lst = list(artifacts.exclude(
+                artifact__name__in=MAX_LEVEL_ARTIFACTS + list(ignore)
+            ).filter(
+                Q(artifact__tier__tier__in=tiers) |
+                Q(artifact__name__in=upgrade)
+            ).values_list("artifact__name", flat=True))
 
-        # Generate the list with the actual artifacts that will be upgraded
-        # in game when a prestige takes place. Making sure we exclude max level artifacts
-        # and filter on artifacts in the tier specified, or specific artifacts chosen.
-        _lst = list(artifacts.exclude(
-            artifact__name__in=MAX_LEVEL_ARTIFACTS + list(ignore)
-        ).filter(
-            Q(artifact__tier__tier__in=tiers) |
-            Q(artifact__name__in=upgrade)
-        ).values_list("artifact__name", flat=True))
+            if _lst:
+                # Should we shuffle the list to add some randomness to the list
+                # of artifacts that will be upgraded.
+                if self.configuration.shuffle_artifacts:
+                    random.shuffle(_lst)
 
-        if _lst:
-            # Should we shuffle the list to add some randomness to the list
-            # of artifacts that will be upgraded.
-            if self.configuration.shuffle_artifacts:
-                random.shuffle(_lst)
-
-        # Setting owned artifacts on current instance. Regardless of artifacts present or not,
-        # if we make it here, we can safely set this to populated list, or empty list.
-        self.logger.debug("artifacts: {artifacts} available for upgrade throughout this session.".format(artifacts=", ".join(_lst)))
-        self.owned_artifacts = _lst
+            # Setting owned artifacts on current instance. Regardless of artifacts present or not,
+            # if we make it here, we can safely set this to populated list, or empty list.
+            self.logger.debug("artifacts: {artifacts} available for upgrade throughout this session.".format(artifacts=", ".join(_lst)))
+            self.owned_artifacts = _lst
 
     @bot_property(queueable=True, tooltip="Update the next artifact that will be purchased when the next prestige takes place.")
     def update_next_artifact_purchase(self):
@@ -731,8 +758,7 @@ class Bot(object):
         self.properties.next_artifact_upgrade = _next
         self.logger.info("next artifact purchase: {artifact}.".format(artifact=_next))
 
-    @not_in_transition
-    @bot_property(queueable=True, tooltip="Parse out the newest hero present in game that contains a non zero dps value.")
+    @bot_property(queueable=True, tooltip="Parse out the newest hero present in game that contains a non zero dps value.", transition=True)
     def parse_newest_hero(self):
         """
         Attempting to parse out and retrieve information about the newest hero present and whether or not the damage type has changed.
@@ -774,8 +800,7 @@ class Bot(object):
                     self.properties.newest_hero = _new
                     self.logger.info("{typ} hero has been parsed out as newest hero with levels in game.".format(typ=_new))
 
-    @not_in_transition
-    @bot_property(forceable=True, shortcut="shift+h", tooltip="Force hero levelling process in game.")
+    @bot_property(forceable=True, calculate="calculate_next_heroes_level", shortcut="shift+h", tooltip="Force hero levelling process in game.", transition=True)
     def level_heroes(self, force=False):
         """
         Execute all processes related to hero levelling in game.
@@ -823,7 +848,7 @@ class Bot(object):
                     # are unlocked, meaning that some unneeded scrolls could take place.
                     self.logger.info("scrolling and levelling heroes on screen.")
                     # Looping until top of heroes panel (masteries) image is found.
-                    while not self._search(image=self.images.masteries):
+                    while not self._search(image=self.images.hero_masteries):
                         self.logger.info("levelling heroes on screen...")
                         for point in self.locations.hero_level_heroes:
                             self.click(point=point, clicks=self.configuration.hero_level_intensity, interval=0.07)
@@ -836,12 +861,11 @@ class Bot(object):
                     for point in self.locations.hero_level_heroes:
                         self.click(point=point, clicks=self.configuration.hero_level_intensity, interval=0.07)
 
-                # Recalculate the next heroes levelling process once everything is finished.
-                self.calculate_next_heroes_level()
+                # Once everything is done here, perform a quick hero parse so we
+                # know which hero type is the newest.
                 self.parse_newest_hero()
 
-    @not_in_transition
-    @bot_property(forceable=True, shortcut="shift+m", tooltip="Force sword master levelling process in game.")
+    @bot_property(forceable=True, calculate="calculate_next_master_level", shortcut="shift+m", tooltip="Force sword master levelling process in game.", transition=True)
     def level_master(self, force=False):
         """
         Execute all processes related to sword master levelling in game.
@@ -875,10 +899,7 @@ class Bot(object):
                         # on the configuration chosen by the user.
                         self.click(self.locations.master_level, clicks=self.configuration.master_level_intensity)
 
-                self.calculate_next_master_level()
-
-    @not_in_transition
-    @bot_property(forceable=True, shortcut="shift+s", tooltip="Level enabled skills in game.")
+    @bot_property(forceable=True, calculate="calculate_next_skills_level", shortcut="shift+s", tooltip="Level enabled skills in game.", transition=True)
     def level_skills(self, force=False):
         """
         Level enabled skills in game.
@@ -991,14 +1012,13 @@ class Bot(object):
 
                 self.calculate_next_skills_level()
 
-    @not_in_transition
-    @bot_property(forceable=True, shortcut="ctrl+a", tooltip="Force all skills in game to be activated.")
+    @bot_property(forceable=True, calculate="calculate_next_skills_activation", shortcut="ctrl+a", tooltip="Force all skills in game to be activated.", transition=True)
     def activate_skills(self, force=False):
         """
         Activate all enabled skills in game if they aren't already active.
         """
         if self.configuration.enable_activate_skills:
-            if force or datetime.now() > self.properties.next_skills_activations:
+            if force or datetime.now() > self.properties.next_skills_activation:
                 self.logger.info("{begin_or_force} skill activation process in game now.".format(
                     begin_or_force="running" if not force else "forcing"))
 
@@ -1016,9 +1036,7 @@ class Bot(object):
                                 self.click(point=getattr(self.locations, "bar_{skill}".format(skill=skill)), clicks=3, pause=0.2)
                                 self.calculate_next_skill_execution(skill=skill)
 
-                self.calculate_next_skills_activation()
-
-    @not_in_transition
+    @bot_property(transition=True)
     def use_perks(self, perks):
         """
         Attempt to activate or purchase the specified perk in game.
@@ -1028,11 +1046,20 @@ class Bot(object):
             # Traveling to the bottom of the expanded master panel for each individual
             # perk usage attempt, some perks may close the panel after usage.
             with self.goto_master(collapsed=False, top=False):
-                # Scroll down slightly to ensure that the proper content (perks) are
-                # present on the screen at all times.
-                self.drag(start=self.locations.game_scroll_start, end=self.locations.game_scroll_top_end)
+                # Grab the image associated with the current perk, we need to look
+                # for it before attempting to use it.
+                _image = getattr(self.images, "perk_{perk}".format(perk=perk))
 
-                _point = getattr(self.locations, perk)
+                while not self._search(image=_image):
+                    # Perk can not be found, just keep dragging until we find it.
+                    self.drag(start=self.locations.scoll_start, end=self.locations.scroll_top_end)
+
+                # This point reached means the perk is on the screen, let's get the position.
+                _found, _position = self._search(image=_image, position=True)
+                _point = (
+                    _position[0] + self.locations.perk_push_x,
+                    _position[1] + self.locations.perk_push_y
+                )
 
                 # Mega boost perk functions quite different;y then the other perks present
                 # and available within the game.
@@ -1083,8 +1110,7 @@ class Bot(object):
                     self.logger.info("using perk: {perk} now.".format(perk=perk))
                     self.click(point=self.locations.perks_okay, pause=1)
 
-    @not_in_transition
-    @bot_property(forceable=True, shortcut="shift+c", tooltip="Force a perk check in game.")
+    @bot_property(forceable=True, calculate="calculate_next_perk_check", shortcut="shift+c", tooltip="Force a perk check in game.", transition=True)
     def perks(self, force=False):
         """
         Execute the perk activation or purchase process in game.
@@ -1104,10 +1130,7 @@ class Bot(object):
                     with self.goto_master(collapsed=False, top=False):
                         self.use_perks(perks=self.enabled_perks)
 
-                self.calculate_next_perk_check()
-
-    @not_in_transition
-    @bot_property(forceable=True, shortcut="shift+u", tooltip="Force a statistics update in game.")
+    @bot_property(forceable=True, calculate="calculate_next_statistics_update", shortcut="shift+u", tooltip="Force a statistics update in game.", transition=True)
     def update_statistics(self, force=False):
         """
         Update the bot statistics by travelling to the statistics page in game and grabbing the values.
@@ -1151,7 +1174,7 @@ class Bot(object):
                             # First, we need to confirm that a number is present within our text result, if not numbers
                             # are present at all, its safe to assume that the ocr has failed.
                             if not any(c.isdigit() for c in _result):
-                                self.logger.warning("no digits found in result, skipping key: {key}".format(key=key))
+                                self.logger.warn("no digits found in result, skipping key: {key}".format(key=key))
                                 continue
 
                             # Otherwise, we can start trying to attempt to parse out the proper
@@ -1204,6 +1227,7 @@ class Bot(object):
                             except ValueError:
                                 self.logger.exception("could not parse key: {key}, result: {result}.".format(key=key, result=_result))
 
+    @bot_property()
     def should_prestige(self):
         """
         Determine whether or not a prestige will take place.
@@ -1256,7 +1280,7 @@ class Bot(object):
         # time we check for prestige readiness, we use the random interval and check that enough
         # time has passed since it's been set.
         if _ready and self.configuration.enable_prestige_threshold_randomization:
-            _jitter = self.configuration.enable_prestige_threshold_randomization
+            _jitter = random.randint(self.configuration.prestige_random_min_time, self.configuration.prestige_random_max_time)
             _datetime = _now + timedelta(minutes=_jitter)
 
             self.properties.next_randomized_prestige = _datetime
@@ -1270,6 +1294,7 @@ class Bot(object):
         # disabled through the bots configuration.
         return _ready
 
+    @bot_property()
     def create_prestige(self):
         """
         Create a new prestige instance and parse out the advanced start.
@@ -1308,7 +1333,7 @@ class Bot(object):
 
         _prestige = Prestige.objects.create(
             timestamp=datetime.now(),
-            time=_delta,
+            duration=_delta,
             stage=self.properties.stage,
             artifact=_artifact,
             session=self.session,
@@ -1322,7 +1347,7 @@ class Bot(object):
 
         # We also need to retrieve the advanced start value from the same screen.
         # Advanced start will allow us to improve stage parsing.
-        _region = self.locations.prestige_event["prestige_advanced_start"] if _globals.game_event_enabled() else self.locations.prestige_base["prestige_advance_start"]
+        _region = self.regions.prestige_event["prestige_advanced_start"] if _globals.game_event_enabled() else self.regions.prestige_base["prestige_advance_start"]
         _result = pytesseract.image_to_string(
             image=self._process(scale=5, threshold=100, region=_region, use_current=True),
             config="--psm 7 nobatch digits"
@@ -1330,11 +1355,11 @@ class Bot(object):
 
         # Parse out the advanced start value, ensuring that any in-proper values
         # are filtered out (only digits allowed).
-        _advanced_start = ''.join(filter(lambda x: x.isigit(), _result))
+        _advanced_start = ''.join(filter(lambda x: x.isdigit(), _result))
 
         return _prestige, _advanced_start
 
-    @not_in_transition
+    @bot_property(transition=True)
     def check_tournament(self):
         """
         Check that a tournament is available or active, joining if possible.
@@ -1406,8 +1431,7 @@ class Bot(object):
         # to prestige properly and this function needs to return.
         return False, None
 
-    @not_in_transition
-    @bot_property(forceable=True, shortcut="shift+p", tooltip="Force a prestige in game to take place.")
+    @bot_property(forceable=True, shortcut="shift+p", tooltip="Force a prestige in game to take place.", transition=True)
     def prestige(self, force=False):
         """
         Perform a prestige in game, joining tournaments or collecting rewards if they're available.
@@ -1431,7 +1455,7 @@ class Bot(object):
 
                         # Reset any properties that are reset or changed when a prestige takes place.
                         self.properties.newest_hero = None
-                        self.prestige_skills_levels = {skill: 0 for skill in Skill}
+                        self.prestige_skills_levels = {skill.value: 0 for skill in Skill}
                         self.prestige_master_levelled = False
                         # Reset the prestige randomization variable if randomization is currently enabled.
                         if self.configuration.enable_prestige_threshold_randomization:
@@ -1508,8 +1532,7 @@ class Bot(object):
                         # process and post functions have finished running.
                         self.artifacts()
 
-    @not_in_transition
-    @bot_property(forceable=True, tooltip="Force a headgear swap in game.")
+    @bot_property(forceable=True, calculate="calculate_next_headgear_swap", tooltip="Force a headgear swap in game.", transition=True)
     def swap_headgear(self, force=False):
         """
         Attempt to swag the in game headgear to match the newest available heroes damage type.
@@ -1580,7 +1603,7 @@ class Bot(object):
                         # If no headgear could be found of the needed type that meets the criteria,
                         # we can exit early without equipping anything.
                         if not _found:
-                            self.logger.warning("no locked headgear of type: {newest} could be found, skipping headgear swap.".format(newest=_newest))
+                            self.logger.warn("no locked headgear of type: {newest} could be found, skipping headgear swap.".format(newest=_newest))
                             self.calculate_next_headgear_swap()
                             return
 
@@ -1593,11 +1616,7 @@ class Bot(object):
                             if _point == "EQUIPPED":
                                 self.logger.info("headgear of type: {newest} is already equipped, skipping headgear swap.".format(newest=_newest))
 
-            # Recalculate the next headgear swap datetime.
-            self.calculate_next_headgear_swap()
-
-    @not_in_transition
-    @bot_property(forceable=True, tooltip="Force all miscellaneous actions in game.")
+    @bot_property(forceable=True, calculate="calculate_next_miscellaneous_actions", tooltip="Force all miscellaneous actions in game.", transition=True)
     def miscellaneous_actions(self, force=False):
         """
         Activate and execute all miscellaneous actions in game.
@@ -1612,11 +1631,7 @@ class Bot(object):
             self.hatch_eggs()
             self.inbox()
 
-            # Calculate when the next set of miscellaneous actions should be executed.
-            self.calculate_next_miscellaneous_actions()
-
-    @not_in_transition
-    @bot_property(forceable=True, shortcut="shift+b", tooltip="Force a break to take place in game.")
+    @bot_property(forceable=True, shortcut="shift+b", tooltip="Force a break to take place in game.", transition=True)
     def breaks(self, force=False):
         """
         Perform all break related functionality, pausing all functionality while a break is in progress and waiting.
@@ -1674,8 +1689,7 @@ class Bot(object):
 
                     time.sleep(1)
 
-    @not_in_transition
-    @bot_property(forceable=True, shortcut="ctrl+d", tooltip="Force a daily achievement check in game.")
+    @bot_property(forceable=True, calculate="calculate_next_daily_achievement_check", shortcut="ctrl+d", tooltip="Force a daily achievement check in game.", transition=True)
     def daily_achievements(self, force=False):
         """
         Perform a check for any completed daily achievements in game, collecting until no more are available.
@@ -1701,11 +1715,7 @@ class Bot(object):
                         # Existing the achievements panel now, functionality has been completed.
                         self.click(point=self.locations.master_screen_top, clicks=3)
 
-                # Recalculate the next daily achievement check datetime.
-                self.calculate_next_daily_achievement_check()
-
-    @not_in_transition
-    @bot_property(forceable=True, shortcut="ctrl+m", tooltip="Force a milestone check to take place in game.")
+    @bot_property(forceable=True, calculate="calculate_next_milestone_check", shortcut="ctrl+m", tooltip="Force a milestone check to take place in game.", transition=True)
     def milestones(self, force=False):
         """
         Perform a check for any completed milestones that are available.
@@ -1742,10 +1752,8 @@ class Bot(object):
 
                 # Exiting the milestones panel now, functionality has been completed.
                 self.click(point=self.locations.master_screen_top, clicks=3)
-                self.calculate_next_milestone_check()
 
-    @not_in_transition
-    @bot_property(forceable=True, shortcut="ctrl+r", tooltip="Force a raid notification check in game.")
+    @bot_property(forceable=True, calculate="calculate_next_raid_notifications_check", shortcut="ctrl+r", tooltip="Force a raid notification check in game.", transition=True)
     def raid_notifications(self, force=False):
         """
         Perform all checks to see if a notification will be generated when clan raid attacks are available.
@@ -1794,12 +1802,73 @@ class Bot(object):
                 # Otherwise, attacks are not currently available for whatever reason,
                 # Just log this and continue.
                 else:
-                    self.logger.info("no raid attacks are actrive or available, notification will not be sent.")
+                    self.logger.info("no raid attacks are active or available, notification will not be sent.")
 
-                self.calculate_next_raid_notifications_check()
+    @bot_property(forceable=True, calculate="calculate_next_fairy_tap", tooltip="Force tapping process to try and click on fairies in game.", transition=True)
+    def fairy_tap(self, force=False):
+        """
+        Perform in game tapping process.
+        """
+        if force or datetime.now() > self.properties.next_fairy_tap:
+            self.logger.info("beginning fairy tapping process.")
 
-    @not_in_transition
-    @bot_property(queueable=True, tooltip="Attempt parse out all owned artifacts from in game.")
+            with self.ensure_collapsed():
+                # Looping through all of the fairy map locations points. Clicking and
+                # checking for ads throughout the process.
+                for index, point in enumerate(self.locations.game_fairies_map, start=1):
+                    self.click(point=point)
+
+                    # Every fifth click, we want to check quickly to see if an ad was pressed
+                    # on which could potentially open a fairy ad.
+                    if index % 5 == 0:
+                        self.collect_ad_no_transition()
+
+                # Wait slightly after clicking has taken place to ensure that
+                # any delayed fairy ads are ready when the next transition state is checked.
+                time.sleep(1)
+
+    @bot_property(forceable=True, calculate="calculate_next_minigames_tap", tooltip="Force minigame tapping process in game.", transition=True)
+    def minigames(self, force=False):
+        """
+        Perform in game minigame tapping process.
+        """
+        if self.configuration.enable_minigames:
+            if force or datetime.now() > self.properties.next_minigame_tap:
+                self.logger.info("beginning minigame tapping process.")
+
+                with self.ensure_collapsed():
+                    _tapping_map = []
+                    # Based on the minigames currently enabled, we can create a list
+                    # of tapping locations that will be looped through and tapped on.
+                    for minigame in self.minigame_order:
+                        # Add (str) to the map when for each one, we check for this while
+                        # looping so we can also output a log message about the minigame.
+                        _tapping_map += (minigame,)
+                        _tapping_map += getattr(self.locations, "minigame_{minigame}".format(minigame=minigame))
+
+                    self.logger.info("executing minigames tapping process {repeats} time(s).".format(repeats=self.configuration.repeat_minigames))
+
+                    # Looping through all of the minigame tapping location points. Clicking and
+                    # checking for ads throughout the process.
+                    for i in range(self.configuration.repeat_minigames):
+                        for index, point in enumerate(_tapping_map, start=1):
+                            if isinstance(point[0], str):
+                                self.logger.info("performing {minigame} taps now.".format(minigame=point))
+                            # Perform proper minigame point click here.
+                            # Only when the point is not a string instance.
+                            else:
+                                self.click(point=point)
+
+                            # Every fifth click, we should check to see if an ad is present on the
+                            # screen now, since our clicks could potentially trigger a fairy ad.
+                            if index % 5 == 0:
+                                self.collect_ad_no_transition()
+
+                    # Wait slightly after clicking has taken place to ensure that
+                    # any delayed fairy ads are ready when the next transition state is checked.
+                    time.sleep(2)
+
+    @bot_property(queueable=True, tooltip="Attempt parse out all owned artifacts from in game.", transition=True)
     def parse_artifacts(self):
         """
         Begin the artifact parsing process in game.
@@ -1826,9 +1895,10 @@ class Bot(object):
                 artifact_image = cv2.imread(filename=ARTIFACTS[artifact.artifact.name])
                 artifact_image = cv2.resize(src=artifact_image, dsize=None, fx=0.5, fy=0.5)
 
-                if self._search(image=artifact_image, im=_image):
-                    self.logger.info("artifact: {artifact} has been found.".format(artifact=artifact.artifact.name))
-                    _locally_found.append(artifact.artifact.name)
+                if self._search(image=artifact_image, im=_image, image_name=artifact.artifact.name):
+                    if artifact.artifact.name not in _locally_found:
+                        self.logger.info("artifact: {artifact} has been found.".format(artifact=artifact.artifact.name))
+                        _locally_found.append(artifact.artifact.name)
 
             # If we've found any artifacts, we can add them to the list of globally
             # found artifacts so far.
@@ -1859,10 +1929,13 @@ class Bot(object):
 
                 # Begin a loop that will take photos of different artifact panel
                 # images after performing drags to find different owned artifacts.
-                while loops != Timeout.FUNCTION_TIMEOUT:
+                while loops != Timeout.FUNCTION_TIMEOUT.value:
                     loops += 1
 
-                    self.drag(start=self.locations.game_scroll_start, end=self.locations.game_scroll_bottom_end)
+                    # Only dragging after our initial snapshot is taken
+                    # and parsing begins on the top image available.
+                    if loops > 1:
+                        self.drag(start=self.locations.game_scroll_start, end=self.locations.game_scroll_bottom_end)
 
                     # Wait slightly after each drag, otherwise our images could potentially
                     # never find duplicates the image is taken while the drag is in progress.
@@ -1870,8 +1943,9 @@ class Bot(object):
 
                     self._snapshot(region=self.regions.artifact_parse, downsize=0.5)
 
-                    # Make sure we didn't just take a duplicate image.
-                    if _duplicate(image_one=self._last_snapshot, image_two=_container[-1]):
+                    # Make sure we didn't just take a duplicate image. Which would mean we should
+                    # break out of our loop so that we can begin collecting threads.
+                    if loops > 1 and _duplicate(image_one=self._last_snapshot, image_two=_container[-1]):
                         # Duplicate images found means we should have a list with all possible
                         # artifact panel drags.
                         break
@@ -1879,32 +1953,25 @@ class Bot(object):
                     # Otherwise, we can add our current image to the list of all artifact
                     # panel images and keep looping.
                     else:
+                        _thread = threading.Thread(
+                            target=_parse_image,
+                            kwargs={
+                                "_artifacts": self.statistics.artifact_statistics.unowned(),
+                                "_image": self._last_snapshot
+                            }
+                        )
+                        # Ensure we also add our image to our image container,
+                        # this allows us to properly check for duplicates.
                         _container.append(self._last_snapshot)
+                        # Start out thread and append it to our list
+                        # of threads, they can all be joined together afterwards.
+                        _thread.start()
+                        _threads.append(_thread)
 
-                # Looping through each image, generating a new threaded function
-                # to attempt to parse artifact information out of each.
-                _unowned = self.statistics.artifact_statistics.unowned()
-
-                for index, image in enumerate(_container):
-                    _threads.append(threading.Thread(
-                       name="parse_artifacts:{index}".format(index=index),
-                       target=_parse_image,
-                       kwargs={
-                           "_artifacts": _unowned,
-                           "_image": image
-                       }
-                    ))
-
-                # Boot up all created threads, running and parsing images until
-                # all threads have finished and been joined.
-                for thread in _threads:
-                    thread.start()
+                # Join all of our threads, with parsed artifact information.
+                # They start running above as soon as they are created.
                 for thread in _threads:
                     thread.join()
-
-                # Convert found artifacts into a set, removing
-                # duplicate artifacts found into unique set.
-                _found = set(_found)
 
                 self.logger.info("successfully found {found} artifacts in game.".format(found=len(_found)))
 
@@ -1912,8 +1979,7 @@ class Bot(object):
                 # we should have all found artifact in one variable.
                 self.statistics.artifact_statistics.artifacts.filter(artifact__name__in=_found).update(owned=True)
 
-    @not_in_transition
-    @bot_property(queueable=True, shortcut="shift+a", tooltip="Begin the artifact discovery/enchantment/purchase process in game.")
+    @bot_property(queueable=True, shortcut="shift+a", tooltip="Begin the artifact discovery/enchantment/purchase process in game.", transition=True)
     def artifacts(self):
         """
         Run the artifact purchasing process in game, handling discovery, enchantment and purchasing (upgrade).
@@ -1968,7 +2034,7 @@ class Bot(object):
                 loops = 0
                 found = False
 
-                while loops != Timeout.FUNCTION_TIMEOUT and not found:
+                while loops != Timeout.FUNCTION_TIMEOUT.value and not found:
                     # Looping until we've reached our function timeout limit and while
                     # the artifact in question has not been found.
                     loops += 1
@@ -1988,10 +2054,9 @@ class Bot(object):
                 # No artifact was found after looping, we can skip the purchase process and log a warning
                 # about the issue.
                 if not found:
-                    self.logger.warning("unable to find artifact: {artifact}, skipping purchase.".format(artifact=_upgrade))
+                    self.logger.warn("unable to find artifact: {artifact}, skipping purchase.".format(artifact=_upgrade))
 
-    @not_in_transition
-    @bot_property(queueable=True, shortcut="shift+d", tooltip="Check for daily rewards in game and collect them if available.")
+    @bot_property(queueable=True, shortcut="shift+d", tooltip="Check for daily rewards in game and collect them if available.", transition=True)
     def daily_rewards(self):
         """
         Collect any daily rewards in game if they're currently available.
@@ -2010,8 +2075,7 @@ class Bot(object):
                 self.click(point=self.locations.game_middle, clicks=5, interval=0.5, pause=1)
                 self.click(point=self.locations.master_screen_top, pause=1)
 
-    @not_in_transition
-    @bot_property(queueable=True, tooltip="Check for available eggs in game and hatch them.")
+    @bot_property(queueable=True, tooltip="Check for available eggs in game and hatch them.", transition=True)
     def hatch_eggs(self):
         """
         Hatch any eggs in game if they are currently available.
@@ -2023,8 +2087,7 @@ class Bot(object):
                 self.click(point=self.locations.eggs_hatch, pause=0.5)
                 self.click(point=self.locations.game_middle, clicks=5, interval=0.5, pause=1)
 
-    @not_in_transition
-    @bot_property(queueable=True, tooltip="Check for a clan crate in game and collect them if available.")
+    @bot_property(queueable=True, tooltip="Check for a clan crate in game and collect them if available.", transition=True)
     def clan_crate(self):
         """
         Check for an available clan crate in game and collect it.
@@ -2043,8 +2106,7 @@ class Bot(object):
                 if self.find_and_click(image=self.images.crate_okay, pause=1):
                     return
 
-    @not_in_transition
-    @bot_property(queueable=True, tooltip="Clear out any inbox notifications in game.")
+    @bot_property(queueable=True, tooltip="Clear out any inbox notifications in game.", transition=True)
     def inbox(self):
         """
         Open up the inbox if it's available on the screen in game, attempting to clear notifications.
@@ -2067,76 +2129,7 @@ class Bot(object):
                 # of notifications.
                 self.click(point=self.locations.master_screen_top, clicks=3, interval=0.2, pause=0.5)
 
-    @not_in_transition
-    @bot_property(queueable=True, tooltip="Begin generic tapping process in game.")
-    def tap(self):
-        """
-        Perform in game tapping process.
-        """
-        if self.configuration.enable_taps:
-            self.logger.info("beginning generic tapping process.")
-
-            with self.ensure_collapsed():
-                self.logger.info("executing tapping process {repeats} time(s).".format(repeats=self.configuration.repeat_taps))
-
-                # Looping through all of the fairy map locations points. Clicking and
-                # checking for ads throughout the process.
-                for i in range(self.configuration.repeat_taps):
-                    for index, point in enumerate(self.locations.game_fairies_map, start=1):
-                        self.click(point=point)
-
-                        # Every fifth click, we want to check quickly to see if an ad was pressed
-                        # on which could potentially open a fairy ad.
-                        if index % 5 == 0:
-                            self.collect_ad_no_transition()
-
-                # Wait slightly after clicking has taken place to ensure that
-                # any delayed fairy ads are ready when the next transition state is checked.
-                time.sleep(2)
-
-    @not_in_transition
-    @bot_property(queueable=True, tooltip="Begin minigame tapping process in game.")
-    def minigames(self):
-        """
-        Perform in game minigame tapping process.
-        """
-        if self.configuration.enable_minigames:
-            self.logger.info("beginning minigame tapping process.")
-
-            with self.ensure_collapsed():
-                _tapping_map = []
-                # Based on the minigames currently enabled, we can create a list
-                # of tapping locations that will be looped through and tapped on.
-                for minigame in self.minigame_order:
-                    # Add (str) to the map when for each one, we check for this while
-                    # looping so we can also output a log message about the minigame.
-                    _tapping_map += (minigame,)
-                    _tapping_map += getattr(self.locations, "minigame_{minigame}".format(minigame=minigame))
-
-                self.logger.info("executing minigames tapping process {repeats} time(s).".format(repeats=self.configuration.repeat_minigames))
-
-                # Looping through all of the minigame tapping location points. Clicking and
-                # checking for ads throughout the process.
-                for i in range(self.configuration.repeat_minigames):
-                    for index, point in enumerate(_tapping_map, start=1):
-                        if isinstance(point[0], str):
-                            self.logger.info("performing {minigame} taps now.".format(minigame=point))
-                        # Perform proper minigame point click here.
-                        # Only when the point is not a string instance.
-                        else:
-                            self.click(point=point)
-
-                        # Every fifth click, we should check to see if an ad is present on the
-                        # screen now, since our clicks could potentially trigger a fairy ad.
-                        if index % 5 == 0:
-                            self.collect_ad_no_transition()
-
-                # Wait slightly after clicking has taken place to ensure that
-                # any delayed fairy ads are ready when the next transition state is checked.
-                time.sleep(2)
-
-    @not_in_transition
-    @bot_property(queueable=True, shortcut="shift+f", tooltip="Attempt to fight a boss in game.")
+    @bot_property(queueable=True, shortcut="shift+f", tooltip="Attempt to fight a boss in game.", wrap_name=False, transition=True)
     def fight_boss(self):
         """
         Attempt to enter a boss fight in game.
@@ -2147,7 +2140,7 @@ class Bot(object):
                 # successfully found and clicked on the fight boss button.
                 loops = 0
 
-                while loops != Timeout.BOSS_TIMEOUT:
+                while loops != Timeout.BOSS_TIMEOUT.value:
                     loops += 1
 
                     if self.find_and_click(image=self.images.no_panel_fight_boss, pause=0.8, log="initiating boss fight in game now."):
@@ -2164,8 +2157,7 @@ class Bot(object):
             pass
 
     @contextmanager
-    @not_in_transition
-    @bot_property(queueable=True, shortcut="shift+l", tooltip="Attempt to leave a boss fight in game.")
+    @bot_property(queueable=True, shortcut="shift+l", tooltip="Attempt to leave a boss fight in game.", wrap_name=False, transition=True)
     def leave_boss(self):
         """
         Attempt to leave a boss fight in game.
@@ -2176,7 +2168,7 @@ class Bot(object):
                 # successfully found and clicked on the leave boss button.
                 loops = 0
 
-                while loops != Timeout.BOSS_TIMEOUT:
+                while loops != Timeout.BOSS_TIMEOUT.value:
                     loops += 1
                     # Look for the leave boss icon in game and attempt
                     # to click it.
@@ -2194,32 +2186,35 @@ class Bot(object):
             pass
 
     @contextmanager
-    @not_in_transition
-    @bot_property(queueable=True, tooltip="Ensure that the game panels are collapsed.")
+    @bot_property(queueable=True, tooltip="Ensure that the game panels are collapsed.", wrap_name=False, transition=True)
     def ensure_collapsed(self):
         """
         Ensure that the current panel is collapsed, regardless of which panel is currently open.
         """
         try:
-            if self._search(image=[self.images.no_panel_settings, self.images.no_panel_clan_raid_ready, self.images.no_panel_clan_no_raid]):
-                yield True
-
             # If we reach this point, it means that our images are not yet available,
             # attempt to collapse whatever panel is currently open.
             loops = 0
             # Looping until we reach our function loop timeout, attempting to find and
             # click on any collapse panels.
             _found = False
-            while loops != Timeout.FUNCTION_TIMEOUT:
+            while loops != Timeout.FUNCTION_TIMEOUT.value:
                 loops += 1
                 # Look for a collapsible icon somewhere in the game and try to click it.
                 # Once pressed, we know that we are now collapsed.
                 if self.find_and_click(image=self.images.generic_collapse_panel, pause=1):
                     _found = True
                     break
+                # Look for any of these generic images, we can use these to derive
+                # whether or not panels are collapsed.
+                if self._search(image=[self.images.no_panel_settings, self.images.no_panel_clan_raid_ready, self.images.no_panel_clan_no_raid]):
+                    _found = True
+                    break
 
-                # Couldn't collapse yet, wait slightly and keep trying.
-                time.sleep(1)
+                if not _found:
+                    # None of the valid images were found or clicked,
+                    # Sleep slightly before continuing.
+                    time.sleep(1)
 
             if _found:
                 yield True
@@ -2232,8 +2227,7 @@ class Bot(object):
             pass
 
     @contextmanager
-    @not_in_transition
-    @bot_property(queueable=True, tooltip="Ensure that no panels are open in game.")
+    @bot_property(queueable=True, tooltip="Ensure that no panels are open in game.", wrap_name=False, transition=True)
     def no_panel(self):
         """
         Ensure that no panels in game are currently open.
@@ -2249,14 +2243,17 @@ class Bot(object):
                     # Once pressed, we know that no panel is open.
                     if self.find_and_click(image=self.images.generic_exit_panel, pause=0.5):
                         break
+                    # Look for any of these generic images, we can use these to derive
+                    # whether or not panels are collapsed.
+                    if self._search(image=[self.images.no_panel_pet_damage, self.images.no_panel_master_damage]):
+                        break
 
             # Yield true as soon as we find and click
-            # on the exit panel.
+            # on the exit panel or we find the generic images.
             yield True
         finally:
             pass
 
-    @not_in_transition
     def _goto_panel(self, panel, icon, top_find, bottom_find, collapsed=True, top=True, equipment_tab=None):
         """
         Attempt to travel to the top or bottom of the specified panel in a collapsed or un-collapsed state.
@@ -2347,7 +2344,7 @@ class Bot(object):
         return True
 
     @contextmanager
-    @bot_property(queueable=True, tooltip="Attempt to travel to the sword master panel in game.")
+    @bot_property(queueable=True, tooltip="Attempt to travel to the sword master panel in game.", wrap_name=False, transition=True)
     def goto_master(self, collapsed=True, top=True):
         """
         Attempt to travel the the sword master panel in game.
@@ -2357,7 +2354,7 @@ class Bot(object):
                 panel=Panel.MASTER,
                 icon=self.images.generic_master_active,
                 top_find=self.images.master_raid_cards,
-                bottom_find=self.images.master_intimidating_presence,
+                bottom_find=self.images.master_silent_march,
                 collapsed=collapsed,
                 top=top
             )
@@ -2365,7 +2362,7 @@ class Bot(object):
             pass
 
     @contextmanager
-    @bot_property(queueable=True, tooltip="Attempt to travel to the heroes panel in game.")
+    @bot_property(queueable=True, tooltip="Attempt to travel to the heroes panel in game.", wrap_name=False, transition=True)
     def goto_heroes(self, collapsed=True, top=True):
         """
         Attempt to travel to the heroes panel in game.
@@ -2383,7 +2380,7 @@ class Bot(object):
             pass
 
     @contextmanager
-    @bot_property(queueable=True, tooltip="Attempt to travel to the equipment panel in game.")
+    @bot_property(queueable=True, tooltip="Attempt to travel to the equipment panel in game.", wrap_name=False, transition=True)
     def goto_equipment(self, collapsed=True, top=True, equipment_tab=None):
         """
         Attempt to travel to the equipment panel in game.
@@ -2402,7 +2399,7 @@ class Bot(object):
             pass
 
     @contextmanager
-    @bot_property(queueable=True, tooltip="Attempt to travel to the pets panel in game.")
+    @bot_property(queueable=True, tooltip="Attempt to travel to the pets panel in game.", wrap_name=False, transition=True)
     def goto_pets(self, collapsed=True, top=True):
         """
         Attempt to travel to the pets panel in game.
@@ -2420,7 +2417,7 @@ class Bot(object):
             pass
 
     @contextmanager
-    @bot_property(queueable=True, tooltip="Attempt to travel to the artifacts panel in game.")
+    @bot_property(queueable=True, tooltip="Attempt to travel to the artifacts panel in game.", wrap_name=False, transition=True)
     def goto_artifacts(self, collapsed=True, top=True):
         """
         Attempt to travel to the artifacts panel in game.
@@ -2438,7 +2435,7 @@ class Bot(object):
             pass
 
     @contextmanager
-    @bot_property(queueable=True, tooltip="Attempt to travel to the shop panel in game.")
+    @bot_property(queueable=True, tooltip="Attempt to travel to the shop panel in game.", wrap_name=False, transition=True)
     def goto_shop(self, collapsed=False, top=True):
         """
         Attempt to travel to the shop panel in game.
@@ -2456,8 +2453,7 @@ class Bot(object):
             pass
 
     @contextmanager
-    @not_in_transition
-    @bot_property(queueable=True, tooltip="Attempt to open the clan panel in game.")
+    @bot_property(queueable=True, tooltip="Attempt to open the clan panel in game.", wrap_name=False, transition=True)
     def goto_clan(self):
         """
         Open the clan panel in game.
@@ -2528,8 +2524,7 @@ class Bot(object):
         # with this bot.
         self.instance.stop()
 
-    @not_in_transition
-    @bot_property(queueable=True, tooltip="Collect a fairy ad in game if one is available.")
+    @bot_property(queueable=True, tooltip="Collect a fairy ad in game if one is available.", transition=True)
     def collect_ad(self):
         """
         Collect an ad if one is available with transition checks included.
@@ -2563,7 +2558,7 @@ class Bot(object):
                     # on the screen after beginning the watching process.
                     while not self._search(image=self.images.ad_collect):
                         self.find_and_click(
-                            image=self.images.ad_collect,
+                            image=self.images.ad_watch,
                             pause=2,
                             log="waiting for pi hole to finish watching ad..."
                         )
@@ -2626,7 +2621,7 @@ class Bot(object):
             k for k, v in {
                 self.fight_boss.__name__: True,
                 self.miscellaneous_actions.__name__: True,
-                self.tap.__name__: self.configuration.enable_taps,
+                self.fairy_tap.__name__: True,
                 self.minigames.__name__: self.configuration.enable_minigames,
                 self.level_master.__name__: self.configuration.enable_master,
                 self.level_heroes.__name__: self.configuration.enable_heroes,
@@ -2726,10 +2721,18 @@ class Bot(object):
                     # function is entered. Ensuring that we "resume" where we left when the queued function
                     # was encountered.
                     for _queued in QueuedFunction.objects.filter(instance=self.instance):
+                        # Queued functions should only be ran if the instance
+                        # is not in a paused state, a paused bot should only allow
+                        # the "resume" function to be executed.
+                        if self._should_pause and _queued.function != "resume":
+                            # Breaking here if queued function should not be
+                            # executed yet. Continuing to normal functionality below.
+                            break
+
                         # Make sure that the queued function encountered actually exists on the bot.
                         # Although this is unlikely, it could occur.
-                        if not bot_property.queueables(function=_function.function, forceables=True):
-                            self.logger.warning("queued function: {queued} does not exist as a queueable, ignoring...".format(queued=_queued.function))
+                        if not bot_property.queueables(function=_queued.function, forceables=True):
+                            self.logger.warn("queued function: {queued} does not exist as a queueable, ignoring...".format(queued=_queued.function))
 
                         # Otherwise, the function encountered exists and can be executed.
                         # Go through normal queued function flow.
@@ -2748,10 +2751,21 @@ class Bot(object):
                         # or not, make sure we "finish" it so it isn't executed again.
                         _queued.remove()
 
+                    # Maybe a termination has been applied to the bot, in which case,
+                    # we should go ahead and raise our termination error.
+                    if self._should_terminate:
+                        # Raising our base termination error.
+                        # Ensuring that bot stops functionality.
+                        raise TerminationEncountered()
+
                     # Should the pause state be applied to the bot?
                     # This happens when a user manually pauses the bot
                     # through a queued function call.
                     if self._should_pause:
+                        # Perform quick failsafe check just in case,
+                        # since we could be in this conditional for a while.
+                        _globals.failsafe_check()
+
                         # Bot is paused when in this function.
                         # Check whether or not a log should be emitted
                         # about us waiting for a resume before continuing.

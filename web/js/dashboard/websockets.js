@@ -2,6 +2,8 @@
  * websockets.js
  */
 $(document).ready(function() {
+    // Place all elements that may be needed or used
+    // by any of our websocket functionality.
     let elements = {
         instancesTable: $("#dashboardInstancesTable"),
         queueFunctionTableBody: $("#dashboardQueueFunctionQueuedTableBody")
@@ -57,12 +59,55 @@ $(document).ready(function() {
             updateFunctions["settings"]();
             updateFunctions["actions"]();
             updateFunctions["queueFunction"]();
+            updateFunctions["clearLogs"]();
+        }
+    }
+
+    eel.expose(base_instance_paused);
+    function base_instance_paused(pk) {
+        // Whenever a bot instance is paused, we need to make sure we update
+        // the instance state, and modify our actions successfully.
+        let selected = activeInstance();
+        let instance = pk;
+
+        // Update the status of the instance that has been stopped,
+        // regardless of whether or not it's the selected instance.
+        updateInstanceState(instance, "paused");
+
+        // If the instance paused is also our selected instance,
+        // we can perform some additional functionality to ensure
+        // the dashboard is in the correct state.
+        if (selected === instance) {
+            updateFunctions["settings"]();
+            updateFunctions["actions"]();
+            updateFunctions["queueFunction"]();
+        }
+    }
+
+    eel.expose(base_instance_resumed);
+    function base_instance_resumed(pk) {
+        // Whenever a bot instance is resumed, we need to make sure we update
+        // the instance state, and modify our actions successfully.
+        let selected = activeInstance();
+        let instance = pk;
+
+        // Update the status of the instance that has been resumed,
+        // regardless of whether or not it's the selected instance.
+        updateInstanceState(instance, "running");
+
+        // If the instance resumed is also our selected instance,
+        // we can perform some additional functionality to ensure
+        // the dashboard is in the correct state.
+        if (selected === instance) {
+            updateFunctions["settings"]();
+            updateFunctions["actions"]();
+            updateFunctions["queueFunction"]();
         }
     }
 
     eel.expose(base_instance_updated);
     function base_instance_updated(pk, data) {
-        // Whenever the base instance is updated properly, we can go ahead
+        // Whenever the selected instance is updated properly, we can go ahead
         // and try to update the selected instance table.
         let selected = activeInstance();
         let instance = pk;
@@ -99,5 +144,10 @@ $(document).ready(function() {
 
         // Add the row to our table and fade it in afterwords.
         tableRow.appendTo(elements.queueFunctionTableBody).fadeIn(100);
+    }
+
+    eel.expose(base_log_emitted);
+    function base_log_emitted(instance, record) {
+        updateFunctions["addLog"](instance, record);
     }
 });

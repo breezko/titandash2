@@ -11,9 +11,7 @@
 {% block page_contents %}
     <div class="card shadow mb-4">
         <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">
-                Settings
-            </h6>
+            <h6 class="m-0 font-weight-bold text-primary">Settings</h6>
         </div>
         <div class="card-body">
             <div class="h-100 settingsTableLoader">
@@ -21,8 +19,10 @@
                     <div class="align-self-center spinner-grow text-primary" role="status"></div>
                 </div>
             </div>
-            <div id="settingsTable" class="table-responsive" style="display: none;">
-                <table class="table table-bordered" id="settingsDataTable" width="100%" cellspacing="0"></table>
+            <div id="settingsContent" style="display: none;">
+                <table class="table table-sm table-hover" id="settingsTable">
+                    <!-- Dynamic Content. -->
+                </table>
             </div>
         </div>
     </div>

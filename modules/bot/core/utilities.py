@@ -1,4 +1,4 @@
-from settings import LOCAL_DATA_LOG_DIR
+from settings import LOCAL_DATA_DIR, LOCAL_DATA_LOG_DIR
 
 from modules.bot.core.exceptions import TransitionStateError
 
@@ -7,6 +7,31 @@ from string import Formatter
 import datetime
 import logging
 import time
+import eel
+
+
+_format = "[%(asctime)s] %(levelname)s [{instance}] [%(filename)s:%(lineno)s - %(funcName)s()] %(message)s"
+
+
+class EelHandler(logging.StreamHandler):
+    """
+    Custom handler used to ensure emitted logs are sent to the frontend.
+    """
+    def __init__(self, instance, stream=None):
+        """
+        Initialize the handler with the proper instance attached for use when emitted.
+        """
+        super(EelHandler, self).__init__(stream=stream)
+
+        # Ensure instance is available as an instance
+        # attribute, can be used later on.
+        self.instance = instance
+
+    def emit(self, record):
+        """
+        Emit function fired whenever a log is sent.
+        """
+        eel.base_log_emitted(self.instance.pk, self.format(record=record))
 
 
 def bot_logger(instance, configuration):
@@ -17,9 +42,12 @@ def bot_logger(instance, configuration):
         """
         Generate a log file name with the instance name and date attached.
         """
-        return "{log_dir}/{name}.log".format(log_dir=LOCAL_DATA_LOG_DIR, name=name + "_" + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+        return "{log_dir}/{name}.log".format(
+            log_dir=LOCAL_DATA_LOG_DIR,
+            name=name + "_" + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        )
 
-    formatter = logging.Formatter("[%(asctime)s] %(levelname)s [{instance}] [%(filename)s:%(lineno)s - %(funcName)s()] %(message)s".format(instance=instance.name))
+    formatter = logging.Formatter(_format.format(instance=instance.name))
     logger = logging.getLogger("titandash.{instance}".format(instance=instance.pk))
 
     # Return early if the logger in question already contains handlers.
@@ -29,7 +57,7 @@ def bot_logger(instance, configuration):
 
     _file_name = _generate_file_name(name=instance.slug())
 
-    for handler in [logging.FileHandler(_file_name), logging.StreamHandler()]:
+    for handler in [logging.FileHandler(_file_name), logging.StreamHandler(), EelHandler(instance=instance)]:
         # Make sure the handler in question has the appropriate formatter and level set.
         handler.setLevel(configuration.logging_level)
         handler.setFormatter(formatter)

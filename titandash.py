@@ -1,7 +1,8 @@
 from settings import (
     EEL_WEB, EEL_INIT_OPTIONS, EEL_START_OPTIONS, EEL_LOGIN, EEL_DASHBOARD,
-    set_active_state
 )
+
+from logger import application_logger
 
 import os
 import eel
@@ -25,20 +26,29 @@ from db.models import User
 import modules.expose
 
 
+logger = application_logger()
+
+
 def close_callback(*args, **kwargs):
     """
     Initiate specific functionality whenever a websocket is closed by eel.
     """
-    # Defaulting behaviour being used here.
     # Sleeping for one second, and checking if any websockets
     # are available again.
     eel.sleep(1)
+
     # If any websockets are available, we know that the server
     # is not being shutdown.
     if len(eel._websockets) == 0:
-        # Set our active state to the proper value.
-        set_active_state(state=False)
-        # Exit and terminate main thread.
+        # Local level import of application state.
+        # Avoiding circular imports.
+        from db.models import ApplicationState
+
+        logger.info("exiting application now.")
+
+        # Set our active state to the proper value. Using database level
+        # value to ensure different processes can read this value.
+        ApplicationState.objects.set(state=False)
         sys.exit()
 
 
@@ -57,6 +67,7 @@ class TitandashApplication(object):
         """
         Initialize application.
         """
+        logger.info("initializing titandash application with options: '{options}'".format(options={"path": EEL_WEB, **EEL_INIT_OPTIONS}))
         # Initializing application through Eel module.
         # "EEL_WEB" represents our "web" folder, which contains all web server specific files.
         eel.init(path=EEL_WEB, **EEL_INIT_OPTIONS)
@@ -69,20 +80,24 @@ class TitandashApplication(object):
         # Import any local level utilities that may be used
         # before the web-server is initialized.
         from django.core.management import call_command
+        from db.models import ApplicationState
         from db.utilities import generate_models
-
-        # Server is being started, it is safe for us
-        # to update our active flag.
-        set_active_state(state=True)
 
         # Run the migrate command within django.
         # Making sure our models are upto date.
-        call_command(command_name="migrate")
+        call_command(command_name="migrate", app="titandash")
+
+        # Server is being started, it is safe for us
+        # to update our active flag.
+        ApplicationState.objects.set(state=True)
+
         # Generate any initial models that we expect
         # to be available by default.
         generate_models()
 
         _url = EEL_DASHBOARD if User.objects.valid() else EEL_LOGIN
+
+        logger.info("starting titandash application with options: '{options}'".format(options={"path": _url, **EEL_START_OPTIONS}))
         # Start eel, providing our start url defined above, the close callback
         # to deal with cleanup functionality, and default options.
         eel.start(_url, close_callback=close_callback, **EEL_START_OPTIONS)
@@ -92,7 +107,3 @@ if __name__ == "__main__":
     # Generate a create an instance of the titandash application.
     # Running until terminated by closing the window or exiting thread.
     TitandashApplication().start()
-
-    # Server is done running, update the globally available
-    # active state so that running instances can terminate properly.
-    set_active_state(state=False)

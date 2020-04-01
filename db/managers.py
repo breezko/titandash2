@@ -14,6 +14,36 @@ import json
 import logging
 
 
+class ApplicationStateManager(Manager):
+    """
+    ApplicationState Model Manager.
+    """
+    def grab(self, qs=True):
+        """
+        Grab the current application state, creating one if it does not already exist.
+        """
+        if not self.all():
+            # No application state object is available yet,
+            # generate one before returning the first one.
+            self.create()
+
+        # Return the first available application state,
+        # generated above if not present.
+        return self.all() if qs else self.first()
+
+    def set(self, state):
+        """
+        Set the current application state to the specified value.
+        """
+        return self.grab().update(state=state)
+
+    def state(self):
+        """
+        Get the current application state.
+        """
+        return self.grab(qs=False).state
+
+
 class UserManager(Manager):
     """
     User Model Manager.

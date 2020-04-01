@@ -2,3 +2,8 @@ from .base import *
 from .dashboard import *
 from .login import *
 from .settings import *
+from .shortcuts import *
+from .artifacts import *
+from .prestiges import *
+from .sessions import *
+from .statistics import *

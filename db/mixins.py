@@ -107,6 +107,3 @@ class ExportModelMixin(object):
         # All attributes are collected and available, let's go ahead
         # and compress them all into a single string output.
         return self.ATTRIBUTE_SEPARATOR.join(_attributes)
-
-
-

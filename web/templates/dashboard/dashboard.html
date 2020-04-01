@@ -11,6 +11,8 @@
     <script type="text/javascript" src="/js/dashboard/queue-function/queueFunction.js"></script>
     <!-- Selected Instance. -->
     <script type="text/javascript" src="/js/dashboard/selected-instance/selectedInstance.js"></script>
+    <!-- Logs. -->
+    <script type="text/javascript" src="/js/dashboard/logs/logs.js"></script>
     <!-- Websockets. -->
     <script type="text/javascript" src="/js/dashboard/websockets.js"></script>
 {% endblock %}
@@ -159,7 +161,7 @@
     </div>
 
     <!-- Queue Function Row -->
-    <div class="card shadow mb-4">
+    <div class="card shadow mb-4" style="min-height: 350px;">
         <!-- Card Header -->
         <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
             <h6 class="m-0 font-weight-bold text-primary">Queue Function</h6>
@@ -248,10 +250,10 @@
     </div>
 
     <!-- Current Instance Row -->
-    <div class="card shadow mb-4">
+    <div class="card shadow mb-4" style="min-height: 650px;">
         <!-- Card Header -->
         <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-            <h6 class="m-0 font-weight-bold text-primary">Selected Instance</h6>
+            <h6 class="m-0 font-weight-bold text-primary" id="dashboardSelectedInstanceBaseInformationNameValue">Selected Instance</h6>
         </div>
 
         <!-- Selected Instance Card Body -->
@@ -265,179 +267,237 @@
 
             <!-- Selected Instance Content -->
             <div id="dashboardSelectedInstanceContent" style="display: none;">
-                <h6 class="font-weight-bold">Generic Information</h6>
-                <!-- Base Information Table -->
-                <div id="dashboardSelectedInstanceBaseInformationTable">
-                    <table class="table table-titan table-sm table-hover w-100">
-                        <tbody>
-                            <tr>
-                                <td>Name</td>
-                                <td><strong id="dashboardSelectedInstanceBaseInformationNameValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>State</td>
-                                <td><strong id="dashboardSelectedInstanceBaseInformationStateValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Session</td>
-                                <td><strong><a href="#" id="dashboardSelectedInstanceBaseInformationSessionValue">------</a></strong></td>
-                            </tr>
-                            <tr>
-                                <td>Started</td>
-                                <td><strong id="dashboardSelectedInstanceBaseInformationStartedValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Function</td>
-                                <td><strong id="dashboardSelectedInstanceBaseInformationFunctionValue">------</strong></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="row">
+                    <div class="col-xl-6 col-lg-6">
+                        <h6 class="font-weight-bold">Generic Information</h6>
+                        <!-- Base Information Table -->
+                        <div id="dashboardSelectedInstanceBaseInformationTable">
+                            <table class="table table-titan table-sm table-hover w-100">
+                                <tbody>
+                                    <tr>
+                                        <td>State</td>
+                                        <td><strong id="dashboardSelectedInstanceBaseInformationStateValue">------</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Session</td>
+                                        <td><strong><a href="#" id="dashboardSelectedInstanceBaseInformationSessionValue">------</a></strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Started</td>
+                                        <td><strong id="dashboardSelectedInstanceBaseInformationStartedValue">------</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Function</td>
+                                        <td><strong id="dashboardSelectedInstanceBaseInformationFunctionValue">------</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="col-xl-6 col-lg-6">
+                        <h6 class="font-weight-bold">Last Prestige Information</h6>
+                        <!-- Last Prestige Information -->
+                        <div id="dashboardSelectedInstanceLastPrestigeTable">
+                            <table class="table table-titan table-sm table-hover w-100">
+                                <tbody>
+                                    <tr>
+                                        <td>Timestamp</td>
+                                        <td><strong id="dashboardSelectedInstanceLastPrestigeTimestampValue">------</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Stage</td>
+                                        <td><strong id="dashboardSelectedInstanceLastPrestigeStageValue">------</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Duration</td>
+                                        <td><strong id="dashboardSelectedInstanceLastPrestigeDurationValue">------</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Artifact</td>
+                                        <td><strong id="dashboardSelectedInstanceLastPrestigeArtifactValue">------</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
                 <hr/>
-                <h6 class="font-weight-bold">Last Prestige Information</h6>
-                <!-- Last Prestige Information -->
-                <div id="dashboardSelectedInstanceLastPrestigeTable">
-                    <table class="table table-titan table-sm table-hover w-100">
-                        <tbody>
-                            <tr>
-                                <td>Timestamp</td>
-                                <td><strong id="dashboardSelectedInstanceLastPrestigeTimestampValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Stage</td>
-                                <td><strong id="dashboardSelectedInstanceLastPrestigeStageValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Duration</td>
-                                <td><strong id="dashboardSelectedInstanceLastPrestigeDurationValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Artifact</td>
-                                <td><strong id="dashboardSelectedInstanceLastPrestigeArtifactValue">------</strong></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="row">
+                    <div class="col-xl-6 col-lg-6">
+                        <h6 class="font-weight-bold">Current Properties Information</h6>
+                        <!-- Current Properties Information 1/2 -->
+                        <div id="dashboardSelectedInstanceCurrentPropertiesTableOne">
+                            <table class="table table-titan table-sm table-hover w-100">
+                            <tbody>
+                                <tr>
+                                    <td>Log File</td>
+                                    <td><strong><a href="#" id="dashboardSelectedInstanceCurrentPropertyLogFileValue">------</a></strong>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Configuration</td>
+                                    <td><strong><a href="#" id="dashboardSelectedInstanceCurrentPropertyConfigurationValue">------</a></strong>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Window</td>
+                                    <td><strong id="dashboardSelectedInstanceCurrentPropertyWindowValue">------</strong>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Shortcuts</td>
+                                    <td><strong id="dashboardSelectedInstanceCurrentPropertyShortcutsValue">------</strong>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Current Stage</td>
+                                    <td><strong id="dashboardSelectedInstanceCurrentPropertyCurrentStageValue">------</strong>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Newest Hero</td>
+                                    <td><strong id="dashboardSelectedInstanceCurrentPropertyNewestHeroValue">------</strong>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Raid Attack Reset</td>
+                                    <td><strong id="dashboardSelectedInstanceCurrentPropertyRaidAttackResetValue">------</strong>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Next Break</td>
+                                    <td><strong id="dashboardSelectedInstanceCurrentPropertyNextBreakValue">------</strong>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Next Break Resume</td>
+                                    <td><strong id="dashboardSelectedInstanceCurrentPropertyNextBreakResumeValue">------</strong>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Next Artifact Upgrade</td>
+                                    <td><strong id="dashboardSelectedInstanceCurrentPropertyNextArtifactUpgradeValue">------</strong>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Next Fairy Tap</td>
+                                    <td><strong id="dashboardSelectedInstanceCurrentPropertyNextFairyTapValue">------</strong>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Next Minigames Tap</td>
+                                    <td><strong id="dashboardSelectedInstanceCurrentPropertyNextMinigamesTapValue">------</strong>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Next Master Level</td>
+                                    <td><strong id="dashboardSelectedInstanceCurrentPropertyNextMasterLevelValue">------</strong>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Next Heroes Level</td>
+                                    <td><strong id="dashboardSelectedInstanceCurrentPropertyNextHeroesLevelValue">------</strong>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Next Skills Level</td>
+                                    <td><strong id="dashboardSelectedInstanceCurrentPropertyNextSkillsLevelValue">------</strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        </div>
+                    </div>
+                    <div class="col-xl-6 col-lg-6">
+                        <h6 class="font-weight-bold">&nbsp;</h6>
+                        <!-- Current Properties Information 2/2 -->
+                        <div id="dashboardSelectedInstanceCurrentPropertiesTableTwo">
+                            <table class="table table-titan table-sm table-hover w-100">
+                                <tbody>
+                                    <tr>
+                                        <td>Next Skills Activation</td>
+                                        <td><strong id="dashboardSelectedInstanceCurrentPropertyNextSkillsActivationValue">------</strong>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>Next Miscellaneous Actions</td>
+                                        <td><strong id="dashboardSelectedInstanceCurrentPropertyNextMiscellaneousActionsValue">------</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Next Headgear Swap</td>
+                                        <td><strong id="dashboardSelectedInstanceCurrentPropertyNextHeadgearSwapValue">------</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Next Perk Check</td>
+                                        <td><strong id="dashboardSelectedInstanceCurrentPropertyNextPerkCheckValue">------</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Next Timed Threshold Prestige</td>
+                                        <td><strong id="dashboardSelectedInstanceCurrentPropertyNextTimedThresholdPrestigeValue">------</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Next Randomized Threshold Prestige</td>
+                                        <td><strong id="dashboardSelectedInstanceCurrentPropertyNextRandomizedThresholdPrestigeValue">------</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Next Statistics Update</td>
+                                        <td><strong id="dashboardSelectedInstanceCurrentPropertyNextStatisticsUpdateValue">------</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Next Daily Achievement Check</td>
+                                        <td><strong id="dashboardSelectedInstanceCurrentPropertyNextDailyAchievementCheckValue">------</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Next Milestone Check</td>
+                                        <td><strong id="dashboardSelectedInstanceCurrentPropertyNextMilestoneCheckValue">------</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Next Heavenly Strike</td>
+                                        <td><strong id="dashboardSelectedInstanceCurrentPropertyNextHeavenlyStrikeValue">------</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Next Deadly Strike</td>
+                                        <td><strong id="dashboardSelectedInstanceCurrentPropertyNextDeadlyStrikeValue">------</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Next Hand Of Midas</td>
+                                        <td><strong id="dashboardSelectedInstanceCurrentPropertyNextHandOfMidasValue">------</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Next Fire Sword</td>
+                                        <td><strong id="dashboardSelectedInstanceCurrentPropertyNextFireSwordValue">------</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Next War Cry</td>
+                                        <td><strong id="dashboardSelectedInstanceCurrentPropertyNextWarCryValue">------</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Next Shadow Clone</td>
+                                        <td><strong id="dashboardSelectedInstanceCurrentPropertyNextShadowCloneValue">------</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-                <hr/>
-                <h6 class="font-weight-bold">Current Properties Information</h6>
-                <!-- Current Properties Information -->
-                <div id="dashboardSelectedInstanceCurrentPropertiesTable">
-                    <table class="table table-titan table-sm table-hover w-100">
-                        <tbody>
-                            <tr>
-                                <td>Log File</td>
-                                <td><strong><a href="#" id="dashboardSelectedInstanceCurrentPropertyLogFileValue">------</a></strong></td>
-                            </tr>
-                            <tr>
-                                <td>Configuration</td>
-                                <td><strong><a href="#" id="dashboardSelectedInstanceCurrentPropertyConfigurationValue">------</a></strong></td>
-                            </tr>
-                            <tr>
-                                <td>Window</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyWindowValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Shortcuts</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyShortcutsValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Current Stage</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyCurrentStageValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Newest Hero</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNewestHeroValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Raid Attack Reset</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyRaidAttackResetValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Next Break</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextBreakValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Next Break Resume</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextBreakResumeValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Next Artifact Upgrade</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextArtifactUpgradeValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Next Master Level</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextMasterLevelValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Next Heroes Level</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextHeroesLevelValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Next Skills Level</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextSkillsLevelValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Next Skills Activation</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextSkillsActivationValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Next Miscellaneous Actions</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextMiscellaneousActionsValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Next Headgear Swap</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextHeadgearSwapValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Next Perk Check</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextPerkCheckValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Next Timed Threshold Prestige</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextTimedThresholdPrestigeValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Next Randomized Threshold Prestige</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextRandomizedThresholdPrestigeValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Next Statistics Update</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextStatisticsUpdateValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Next Daily Achievement Check</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextDailyAchievementCheckValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Next Milestone Check</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextMilestoneCheckValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Next Heavenly Strike</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextHeavenlyStrikeValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Next Deadly Strike</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextDeadlyStrikeValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Next Hand Of Midas</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextHandOfMidasValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Next Fire Sword</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextFireSwordValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Next War Cry</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextWarCryValue">------</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Next Shadow Clone</td>
-                                <td><strong id="dashboardSelectedInstanceCurrentPropertyNextShadowCloneValue">------</strong></td>
-                            </tr>
-                        </tbody>
-                    </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logs Row -->
+    <div class="card shadow mb-4">
+        <!-- Card Header -->
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">Logs</h6>
+        </div>
+
+        <!-- Log Card Body -->
+        <div class="card-body" id="dashboardLogBody" style="max-height: 700px; overflow: auto;">
+            <div id="dashboardLogContent">
+                <div id="dashboardLogInitialText" class="text-center">
+                    <h6 class="text-primary">Log records will appear here as they are emitted...</h6>
+                </div>
+                <div id="dashboardLogRecords">
+                    <!-- Dynamic Content -->
                 </div>
             </div>
         </div>

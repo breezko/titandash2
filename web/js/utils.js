@@ -57,8 +57,8 @@ let shortcutsEnabled = function() {
  * Hide the specified panel, displaying a loader while hidden.
  */
 let hidePanel = function(content, loader, cb) {
-    content.fadeOut(50, function() {
-        loader.fadeIn(50, cb);
+    content.fadeOut(100, function() {
+        loader.fadeIn(100, cb);
     });
 };
 
@@ -66,8 +66,8 @@ let hidePanel = function(content, loader, cb) {
  * Show the specified panel, hiding the loader while shown.
  */
 let showPanel = function(content, loader, cb) {
-    loader.fadeOut(50, function() {
-        content.fadeIn(50, cb);
+    loader.fadeOut(100, function() {
+        content.fadeIn(100, cb);
     });
 };
 
@@ -103,7 +103,7 @@ let currentTimestamp = function() {
  */
 let generateToast = function(sender, message, typ, timeout) {
     let icon;
-    let remove = timeout | 5000;
+    let remove = timeout || 5000;
 
     switch (typ) {
         case "success":
@@ -149,7 +149,7 @@ let generateToast = function(sender, message, typ, timeout) {
  */
 let formatString = function(value) {
     // Replace all underscores with a proper space.
-    value = value.replace(/_/g, " ")
+    value = value.replace(/_/g, " ").replace(/[()]/g, "");
     // Begin capitalizing each word available in the
     // value without any underscores.
     let _split = value.toLowerCase().split(" ");
@@ -197,7 +197,13 @@ let Countdown = function(datetime, formatted, element, disablePadding) {
 
         // We always want to at least update our element so that the countdown
         // contains the properly formatted time until the countdown is done.
-        element.text(`(${formatted} (${hours}:${minutes}:${seconds})`);
+        if (formatted) {
+            element.text(`(${formatted} (${hours}:${minutes}:${seconds})`);
+        } else {
+            // No formatting should be included on the output string.
+            // Just display the countdown.
+            element.text(`${hours}:${minutes}:${seconds}`);
+        }
 
         // If the distance has exceeded zero (completed), we should also go ahead and destroy our
         // interval manually and update the text to the proper "ready" text.
@@ -206,7 +212,7 @@ let Countdown = function(datetime, formatted, element, disablePadding) {
             // Ensure update doesn't happen after setting ready state.
             clearInterval(interval);
             // Update elements html so that a proper "ready" text is present.
-            element.text("ready...");
+            element.html('<span class="text-primary">READY...</span>.');
         }
     }.bind(this), 1000);
 

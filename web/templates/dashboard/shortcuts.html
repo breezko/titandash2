@@ -1,0 +1,32 @@
+{% extends "dashboard/base_dashboard.html" %}
+
+{% block title %}
+    Shortcuts
+{% endblock %}
+
+{% block additional_scripts %}
+    <script type="text/javascript" src="/js/shortcuts.js"></script>
+{% endblock %}
+
+{% block page_contents %}
+    <!-- Shortcuts Card -->
+    <div class="card shadow mb-4">
+        <!-- Shortcuts Header -->
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Shortcuts</h6>
+        </div>
+        <!-- Shortcuts Card Body -->
+        <div class="card-body">
+            <div class="h-100 shortcutsTableLoader">
+                <div class="h-100 d-flex justify-content-center">
+                    <div class="align-self-center spinner-grow text-primary"></div>
+                </div>
+            </div>
+            <div id="shortcutsContent" style="display: none;">
+                <table class="table table-sm table-hover" id="shortcutsTable">
+                    <!-- Dynamic Content. -->
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}

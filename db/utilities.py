@@ -1,21 +1,23 @@
 from db.mixins import ExportModelMixin
 
+from logger import application_logger
+
 from modules.bot.core.bot import Bot
 from modules.bot.core.window import WindowHandler
 from modules.bot.core.enumerations import State
 
 import threading
 import time
-import eel
+
+
+logger = application_logger()
 
 
 def generate_url(model, key):
     """
     Generate a url that may be used by any pages that should load dynamic information based on specific model data.
     """
-    return "{host}:{port}/templates/{model}?pk={key}".format(
-        host=eel._start_args["host"],
-        port=eel._start_args["port"],
+    return "/templates/{model}?pk={key}".format(
         model=model._meta.model_name,
         key=key
     )
@@ -31,7 +33,7 @@ def play(instance, configuration, window, shortcuts):
     # If the instance state is currently already running, or paused,
     # which shouldn't happen based on thr way the UI works, but better
     # safe than sorry here.
-    if instance.state in [State.RUNNING.value, State.PAUSED]:
+    if instance.state in [State.RUNNING.value, State.PAUSED.value]:
         # Queue up an explicit termination of the running bot.
         QueuedFunction.objects.create(instance=instance, function="terminate")
 

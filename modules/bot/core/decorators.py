@@ -1,5 +1,4 @@
-from settings import get_active_state
-
+from modules.bot.core.globals import Globals
 from modules.bot.core.utilities import in_transition_func
 from modules.bot.core.exceptions import ServerTerminationEncountered, TerminationEncountered
 
@@ -13,12 +12,17 @@ import time
 # and their options within the app. See "BotProperty" below.
 _PROPERTIES = dict()
 
+# Create a module level reference to our globals utility wrapper.
+# We can use this to check if we should raise exceptions instead of
+# running through normal functionality for windows.
+_globals = Globals()
+
 
 class BotProperty(object):
     """
     Queueable Function Decorator.
     """
-    def __init__(self, queueable=False, forceable=False, shortcut=None, tooltip=None, interval=None, wrap_name=True):
+    def __init__(self, queueable=False, forceable=False, calculate=None, shortcut=None, tooltip=None, interval=None, wrap_name=True, transition=False):
         """
         Initialize the queueable decorator on a function, we should be able to choose
         a couple of options when making a function queueable, including whether ot not it
@@ -26,17 +30,21 @@ class BotProperty(object):
 
         :param queueable: Should this function be a queueable that can be queued by the bot.
         :param forceable: Should this function be forceable when called by the bot.
+        :param calculate: Should this function also perform a calculation function following execution.
         :param shortcut: Specify a keyboard shortcut that can be used to queue the function.
         :param tooltip:  Specify a tooltip that will be displayed when the function is hovered over.
         :param interval: Specify an interval that will be used to derive scheduled function periodicity.
         :param wrap_name: Whether or not this function should also update the instances current function property when called.
+        :param transition: Whether or not this function should also perform a transition check before execution.
         """
         self.queueable = queueable
         self.forceable = forceable
+        self.calculate = calculate
         self.shortcut = shortcut
         self.tooltip = tooltip
         self.interval = interval
         self.wrap_name = wrap_name
+        self.transition = transition
 
     def __call__(self, function):
         """
@@ -49,13 +57,23 @@ class BotProperty(object):
             """
             Wrap the bot property callable function.
             """
+            # Ensure the application state model is available
+            # locally so we can check for our state when functions are executed.
+            from db.models import ApplicationState
+
+            _property = _PROPERTIES[function.__name__]
+
             # Before anything, perform a check to see if our server is still running.
             # Since instances run in separate threads, we need to know if we should
             # keep executing or not.
-            if get_active_state() is False:
+            if ApplicationState.objects.state() is False:
                 # Raise a server termination error. Ensuring we can
                 # catch and log our error properly.
                 raise ServerTerminationEncountered()
+
+            # Should we just terminate anyways due to a failsafe
+            # being activated during the time of activation?
+            _globals.failsafe_check()
 
             # Should this bot instance be terminated,
             # due to a manual termination.
@@ -65,11 +83,23 @@ class BotProperty(object):
             # Ensure instance has its "Props" object updated to ensure
             # that the bot instance is saved and web sockets are sent.
             if self.wrap_name:
-                bot.properties.function = function.__name__
+                bot.properties.function = _property["name"]
+
+            # Should a transition check take place before
+            # running our function directly.
+            if self.transition:
+                in_transition_func(instance=bot, max_loops=30)
 
             # Run our function normally once we've added it to our
             # globally available queueable dictionary.
             _ret = function(bot, *args, **kwargs)
+
+            # After the function is executed, we should perform
+            # any calculation functionality that's required afterwards.
+            if _property["forceable"] and _property["calculate"]:
+                # Only happens if the function is one of our forceables
+                # and also has a calculate function attached.
+                getattr(bot, _property["calculate"])()
 
             # Increment this bot properties usage on the instances
             # bot statistics that are available.
@@ -92,9 +122,12 @@ class BotProperty(object):
                 "function": function,
                 "queueable": self.queueable,
                 "forceable": self.forceable,
+                "calculate": self.calculate,
                 "shortcut": self.shortcut,
                 "tooltip": self.tooltip,
-                "interval": self.interval
+                "interval": self.interval,
+                "wrap_name": self.wrap_name,
+                "transition": self.transition
             }
 
     @classmethod

@@ -10,34 +10,6 @@ VERSION_GAME = "3.7.1"
 # GAME VERSION VARIABLES.
 MAX_STAGE = 92000
 
-# Create an active flag that can be checked in other modules
-# to determine the state of our server currently. While running,
-# we will know by seeing that _active = True. Eel's close callback
-# will ensure we set this to False as soon as the server is terminated.
-_active = False
-
-
-def get_active_state():
-    """
-    Retrieve the current active state value.
-    """
-    # _active -> globally available.
-    global _active
-    # Just return the current _active flag state.
-    return _active
-
-
-def set_active_state(state):
-    """
-    Set the current active state value.
-    """
-    # _active -> globally available.
-    global _active
-    # Set the current _active flag state
-    # to the specified value.
-    _active = state
-
-
 # Grabbing the directory that this file is in.
 # Proves useful when dealing with files alongside
 # the application itself.
@@ -64,10 +36,14 @@ BOT_DATA_DIR = os.path.join(BOT_DIR, "data")
 BOT_IMAGE_DIR = os.path.join(BOT_DATA_DIR, "images")
 # Place any exposed images here, images that could be displayed
 # on the dashboard or frontend should be placed here.
-WEB_IMAGE_DIR = os.path.join(WEB_DIR, "images")
+WEB_IMAGE_DIR = os.path.join(WEB_DIR, "img")
 # Artifact images are stored in a slightly different location,
 # they're placed within the web folder so we can expose them on the frontend.
 ARTIFACT_IMAGE_DIR = os.path.join(WEB_IMAGE_DIR, "artifacts")
+
+# Create an additional reference to the relative
+# directory that's used to retrieve and load artifacts.
+RELATIVE_ARTIFACT_IMAGE_DIR = "/img/artifacts"
 
 # Base local data directory that's used to store all of our
 # local data files in a reusable location.
@@ -100,7 +76,7 @@ EEL_START_OPTIONS = {
     'port': 0,                               # Port: 0 will automatically pick one.
     'block': True,                           # Blocking start() call until finished.
     'jinja_templates': EEL_JINJA_TEMPLATES,  # String specifying folder to use for Jinja2 templates.
-    'size': (700, 900)                      # Tuple of ints specifying width and height of window.
+    'size': (1100, 900),                     # Tuple of ints specifying width and height of window.
 }
 
 # Database Settings (SQLite) - Django ORM.

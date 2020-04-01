@@ -1,0 +1,32 @@
+{% extends "dashboard/base_dashboard.html" %}
+
+{% block title %}
+    Global Configuration
+{% endblock %}
+
+{% block additional_scripts %}
+    <script type="text/javascript" src="/js/global_configuration.js"></script>
+{% endblock %}
+
+{% block page_contents %}
+    <!-- Global Configuration Card -->
+    <div class="card shadow mb-4">
+        <!-- Global Configuration Header -->
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Global Configuration</h6>
+        </div>
+        <!-- Global Configuration Card Body -->
+        <div class="card-body">
+            <!-- Global Configuration Loader -->
+            <div class="h-100 globalConfigurationTableLoader">
+                <div class="h-100 d-flex justify-content-center">
+                    <div class="align-self-center spinner-grow text-primary"></div>
+                </div>
+            </div>
+            <!-- Global Configuration Content -->
+            <div id="globalConfigurationContent" style="display: none;">
+
+            </div>
+        </div>
+    </div>
+{% endblock %}

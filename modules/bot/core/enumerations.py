@@ -171,6 +171,7 @@ class Minigame(BotEnum):
     ASTRAL_AWAKENING = "astral_awakening"
     HEART_OF_MIDAS = "heart_of_midas"
     FLASH_ZIP = "flash_zip"
+    FORBIDDEN_CONTRACT = "forbidden_contract"
 
 
 class HeroType(BotEnum):

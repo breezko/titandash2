@@ -79,7 +79,7 @@ $(document).ready(async function() {
             case "paused":
                 modifyAction("play", true);
                 modifyAction("pause", false);
-                modifyAction("stop", false);
+                modifyAction("stop", true);
                 break;
             case "stopped":
                 modifyAction("play", true);

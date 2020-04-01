@@ -5,7 +5,7 @@ from pyautogui import failSafeCheck, FailSafeException as PyAutoGuiFailsafeExcep
 from cachetools import TTLCache
 
 
-# Create out caching object that will persist objects
+# Create our caching object that will persist objects
 # within memory for five seconds, we can make use of this
 # with our globals wrapper to ensure database queries aren't
 # constantly taking place when performing clicks or intensive functions.

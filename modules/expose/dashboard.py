@@ -149,7 +149,7 @@ def dashboard_queue_function_information(selected_instance):
 
     return {
         "queued": [function.json() for function in QueuedFunction.objects.filter(instance=_instance)],
-        "queueables": BotProperty.queueables()
+        "queueables": BotProperty.all()
     }
 
 

@@ -1365,6 +1365,14 @@ pre code {
   }
 }
 
+.table-titan-stats tr td:first-child {
+  width: 100%;
+}
+
+.table-titan-stats tr td {
+  font-size: 12px;
+}
+
 .table-titan tr td:first-child {
   width: 50%;
 }

@@ -1,0 +1,41 @@
+{% extends "dashboard/base_dashboard.html" %}
+
+{% block title %}
+    Statistics
+{% endblock %}
+
+{% block additional_scripts %}
+    <script type="text/javascript" src="/js/statistics.js"></script>
+{% endblock %}
+
+{% block page_contents %}
+    <!-- Statistics Card -->
+    <div class="card shadow mb-4">
+        <!-- Statistics Header -->
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Statistics</h6>
+        </div>
+        <!-- Statistics Card Body -->
+        <div class="card-body">
+            <!-- Statistics Loader -->
+            <div class="h-100 statisticsTableLoader">
+                <div class="h-100 d-flex justify-content-center">
+                    <div class="align-self-center spinner-grow text-primary"></div>
+                </div>
+            </div>
+            <!-- Statistics Content -->
+            <div id="statisticsContent" style="display: none;">
+                <!-- Statistics Instance Selector Content -->
+                <div id="statisticsInstanceSelectorContainer" style="display: none;">
+                    <select class="form-control" id="statisticsInstanceSelectorSelect"></select>
+                    <hr/>
+                </div>
+                <div id="statisticsTableContainer">
+                    <table class="table table-sm table-hover" id="statisticsTable">
+                        <!-- Dynamic Content -->
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

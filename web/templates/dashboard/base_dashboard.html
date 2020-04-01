@@ -13,6 +13,7 @@
     <script type="text/javascript" src="/js/dashboard/sb-admin/sb-admin-2.js"></script>
     <script type="text/javascript" src="/js/utils.js"></script>
     <script type="text/javascript" src="/js/dashboard/base_dashboard.js"></script>
+    <script type="text/javascript" src="/js/dashboard/websockets.js"></script>
     <script type="text/javascript" src="/js/datatables/jquery.dataTables.min.js"></script>
     <script type="text/javascript" src="/js/datatables/dataTables.bootstrap4.min.js"></script>
 {% endblock %}
@@ -64,14 +65,6 @@
                     Core
                 </div>
 
-                <!-- Nav Item - Sessions -->
-                <li class="nav-item">
-                    <a class="nav-link" href="charts.html">
-                        <i class="fas fa-fw fa-info"></i>
-                        <span>Sessions</span>
-                    </a>
-                </li>
-
                 <!-- Nav Item - Configurations -->
                 <li class="nav-item">
                     <a class="nav-link">
@@ -81,14 +74,22 @@
 
                 <!-- Nav Item - Global -->
                 <li class="nav-item">
-                    <a class="nav-link">
+                    <a class="nav-link" href="/templates/dashboard/global_configuration.html">
                         <i class="fas fa-fw fa-globe"></i>
                         <span>Global Configurations</span></a>
                 </li>
 
+                <!-- Nav Item - Sessions -->
+                <li class="nav-item">
+                    <a class="nav-link" href="/templates/dashboard/sessions.html">
+                        <i class="fas fa-fw fa-info"></i>
+                        <span>Sessions</span>
+                    </a>
+                </li>
+
                 <!-- Nav Item - Statistics -->
                 <li class="nav-item">
-                    <a class="nav-link">
+                    <a class="nav-link" href="/templates/dashboard/statistics.html">
                         <i class="fas fa-fw fa-chart-bar"></i>
                         <span>Statistics</span>
                     </a>
@@ -96,7 +97,7 @@
 
                 <!-- Nav Item - Prestiges -->
                 <li class="nav-item">
-                    <a class="nav-link">
+                    <a class="nav-link" href="/templates/dashboard/prestiges.html">
                         <i class="fas fa-fw fa-clock"></i>
                         <span>Prestiges</span>
                     </a>
@@ -104,7 +105,7 @@
 
                 <!-- Nav Item - Artifacts -->
                 <li class="nav-item">
-                    <a class="nav-link">
+                    <a class="nav-link" href="/templates/dashboard/artifacts.html">
                         <i class="fas fa-fw fa-book"></i>
                         <span>Artifacts</span>
                     </a>
@@ -128,7 +129,7 @@
 
                 <!-- Nav Item - Shortcuts -->
                 <li class="nav-item">
-                    <a class="nav-link">
+                    <a class="nav-link" href="/templates/dashboard/shortcuts.html">
                         <i class="fas fa-fw fa-keyboard"></i>
                         <span>Shortcuts</span>
                     </a>

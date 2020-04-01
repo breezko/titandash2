@@ -1,0 +1,41 @@
+{% extends "dashboard/base_dashboard.html" %}
+
+{% block title %}
+    Artifacts
+{% endblock %}
+
+{% block additional_scripts %}
+    <script type="text/javascript" src="/js/artifacts.js"></script>
+{% endblock %}
+
+{% block page_contents %}
+    <!-- Artifacts Card -->
+    <div class="card shadow mb-4">
+        <!-- Artifacts Header -->
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Artifacts</h6>
+        </div>
+        <!-- Artifacts Card Body -->
+        <div class="card-body">
+            <!-- Artifacts Loader -->
+            <div class="h-100 artifactsTableLoader">
+                <div class="h-100 d-flex justify-content-center">
+                    <div class="align-self-center spinner-grow text-primary"></div>
+                </div>
+            </div>
+            <!-- Artifacts Content -->
+            <div id="artifactsContent" style="display: none;">
+                <!-- Artifact Instance Selector Content -->
+                <div id="artifactsInstanceSelectorContainer" style="display: none;">
+                    <select class="form-control" id="artifactsInstanceSelectorSelect"></select>
+                    <hr/>
+                </div>
+                <div id="artifactsTableContainer">
+                    <table class="table table-sm table-hover" id="artifactsTable">
+                        <!-- Dynamic Content -->
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

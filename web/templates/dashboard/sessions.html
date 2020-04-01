@@ -1,0 +1,41 @@
+{% extends "dashboard/base_dashboard.html" %}
+
+{% block title %}
+    Sessions
+{% endblock %}
+
+{% block additional_scripts %}
+    <script type="text/javascript" src="/js/sessions.js"></script>
+{% endblock %}
+
+{% block page_contents %}
+    <!-- Sessions Card -->
+    <div class="card shadow mb-4">
+        <!-- Sessions Header -->
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Sessions</h6>
+        </div>
+        <!-- Sessions Card Body -->
+        <div class="card-body">
+            <!-- Sessions Loader -->
+            <div class="h-100 sessionsTableLoader">
+                <div class="h-100 d-flex justify-content-center">
+                    <div class="align-self-center spinner-grow text-primary"></div>
+                </div>
+            </div>
+            <!-- Sessions Content -->
+            <div id="sessionsContent" style="display: none;">
+                <!-- Sessions Instance Selector Content -->
+                <div id="sessionsInstanceSelectorContainer" style="display: none;">
+                    <select class="form-control" id="sessionsInstanceSelectorSelect"></select>
+                    <hr/>
+                </div>
+                <div id="sessionsTableContainer">
+                    <table class="table table-sm table-hover" id="sessionsTable">
+                        <!-- Dynamic Content -->
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

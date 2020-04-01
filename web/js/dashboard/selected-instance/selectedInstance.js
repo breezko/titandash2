@@ -13,6 +13,8 @@ $(document).ready(async function() {
         raidAttackResetCountdown: null,
         nextBreakCountdown: null,
         breakResumeCountdown: null,
+        nextFairyTapCountdown: null,
+        nextMinigamesTapCountdown: null,
         nextMasterLevelCountdown: null,
         nextHeroesLevelCountdown: null,
         nextSkillsLevelCountdown: null,
@@ -70,6 +72,8 @@ $(document).ready(async function() {
             nextBreak: $("#dashboardSelectedInstanceCurrentPropertyNextBreakValue"),
             nextBreakResume: $("#dashboardSelectedInstanceCurrentPropertyNextBreakResumeValue"),
             nextArtifactUpgrade: $("#dashboardSelectedInstanceCurrentPropertyNextArtifactUpgradeValue"),
+            nextFairyTap: $("#dashboardSelectedInstanceCurrentPropertyNextFairyTapValue"),
+            nextMinigamesTap: $("#dashboardSelectedInstanceCurrentPropertyNextMinigamesTapValue"),
             nextMasterLevel: $("#dashboardSelectedInstanceCurrentPropertyNextMasterLevelValue"),
             nextHeroesLevel: $("#dashboardSelectedInstanceCurrentPropertyNextHeroesLevelValue"),
             nextSkillsLevel: $("#dashboardSelectedInstanceCurrentPropertyNextSkillsLevelValue"),
@@ -105,7 +109,7 @@ $(document).ready(async function() {
         // Begin setting up the values present in our current data instance.
         // Some values can be populated even if an instance is not currently running.
         // Some values require the instance to be running before we populate anything.
-        let state = activeInstanceStatus();
+        let state = panel.data.state;
 
         if (state === "stopped") {
             // First, reset all values present within our information tables. They should
@@ -139,12 +143,12 @@ $(document).ready(async function() {
         }
 
         // Name Value.
-        if (panel.data.name && panel.baseInformation.name.text() !== panel.data.name) {
-            panel.baseInformation.name.text(panel.data.name);
+        if (panel.data.name && panel.baseInformation.name.data("name") !== panel.data.name) {
+            panel.baseInformation.name.data("name", panel.data.name).text(`Selected Instance (${panel.data.name})`);
         }
         // State Value.
-        if (panel.data.state && panel.baseInformation.state.text() !== panel.data.state) {
-            panel.baseInformation.state.text(panel.data.state);
+        if (panel.data.state && panel.baseInformation.state.data("state") !== panel.data.state) {
+            panel.baseInformation.state.data("state", panel.data.state).text(panel.data.state.toUpperCase());
         }
 
         if (state === "running" || state === "paused") {
@@ -157,8 +161,8 @@ $(document).ready(async function() {
                 configureStopwatch("startedStopwatch", panel.data.started, panel.baseInformation.started);
             }
             // Function Value.
-            if (panel.data.function && panel.baseInformation.function.text() !== panel.data.function) {
-                panel.baseInformation.function.text(panel.data.function);
+            if (panel.data.function && panel.baseInformation.function.data("function") !== panel.data.function) {
+                panel.baseInformation.function.data("function", panel.data.function).text(formatString(panel.data.function));
             }
             // Timestamp Value (Stopwatch).
             if (panel.data.last_prestige && panel.lastPrestigeInformation.timestamp.data("datetime") !== panel.data.last_prestige.timestamp.datetime) {
@@ -187,18 +191,24 @@ $(document).ready(async function() {
                 panel.currentPropertiesInformation.configuration.attr("href", panel.data.configuration.url).text(panel.data.configuration.name);
             }
             // Window Value.
-            if (panel.data.window && panel.currentPropertiesInformation.window.text() !== panel.data.window.formatted) {
-                panel.currentPropertiesInformation.window.text(panel.data.window.formatted);
+            if (panel.data.window && panel.currentPropertiesInformation.window.data("text") !== panel.data.window.text) {
+                panel.currentPropertiesInformation.window.data("text", panel.data.window.text).text(formatString(panel.data.window.text));
             }
             // Shortcuts Value.
             if (panel.data.shortcuts !== null && panel.currentPropertiesInformation.shortcuts.data("enabled") !== panel.data.shortcuts) {
                 panel.currentPropertiesInformation.shortcuts.data("enabled", panel.data.shortcuts).text(panel.data.shortcuts ? "ENABLED" : "DISABLED");
             }
             // Current Stage Value.
-            if (panel.data.current_stage && panel.currentPropertiesInformation.stage.data("stage") !== panel.data.current_stage) {
-                panel.currentPropertiesInformation.stage.data("stage", panel.data.current_stage).html(`
-                    ${panel.data.current_stage.stage} (${panel.data.current_stage.diff} - ${panel.data.current_stage.percent})
-                `);
+            if (panel.data.stage.stage && panel.currentPropertiesInformation.currentStage.data("stage") !== panel.data.stage.stage) {
+                if (panel.data.stage.diff) {
+                    panel.currentPropertiesInformation.currentStage.data("stage", panel.data.stage.stage).html(`
+                        ${panel.data.stage.stage} (${panel.data.stage.diff} - ${panel.data.stage.percent})
+                    `);
+                } else {
+                    panel.currentPropertiesInformation.currentStage.data("stage", panel.data.stage.stage).html(`
+                        ${panel.data.stage.stage}
+                    `);
+                }
             }
             // Newest Hero Value.
             if (panel.data.newest_hero && panel.currentPropertiesInformation.newestHero.text() !== panel.data.newest_hero) {
@@ -219,8 +229,16 @@ $(document).ready(async function() {
             // Next Artifact Upgrade Value.
             if (panel.data.next_artifact_upgrade && panel.currentPropertiesInformation.nextArtifactUpgrade.data("key") !== panel.data.next_artifact_upgrade.key) {
                 panel.currentPropertiesInformation.nextArtifactUpgrade.data("key", panel.data.next_artifact_upgrade.key).html(`
-                    ${formatString(panel.data.next_artifact_upgrade)}&nbsp;&nbsp;<img height="20" width="20" src="${panel.data.next_artifact_upgrade.image}"
+                    ${formatString(panel.data.next_artifact_upgrade.name)}&nbsp;&nbsp;<img height="17" width="17" src="${panel.data.next_artifact_upgrade.image}">
                 `);
+            }
+            // Next Fairy Tap Value (Countdown).
+            if (panel.data.next_fairy_tap.datetime && panel.currentPropertiesInformation.nextFairyTap.data("datetime") !== panel.data.next_fairy_tap.datetime) {
+                configureCountdown("nextFairyTapCountdown", panel.data.next_fairy_tap, panel.currentPropertiesInformation.nextFairyTap);
+            }
+            // Next Minigames Tap Value (Countdown).
+            if (panel.data.next_minigames_tap.datetime && panel.currentPropertiesInformation.nextMinigamesTap.data("datetime") !== panel.data.next_minigames_tap) {
+                configureCountdown("nextMinigamesTapCountdown", panel.data.next_minigames_tap, panel.currentPropertiesInformation.nextMinigamesTap);
             }
             // Next Master Level Value (Countdown).
             if (panel.data.next_master_level.datetime && panel.currentPropertiesInformation.nextMasterLevel.data("datetime") !== panel.data.next_master_level.datetime) {
@@ -315,18 +333,18 @@ $(document).ready(async function() {
         if (_countdown !== null) {
             // The countdown original date will be different if a new countdown
             // should be generated and built.
-            if (_countdown.originalDateReference !== date.datetime) {
+            if (_countdown.originalDateReference !== data.datetime) {
                 _countdown.destroy();
                 // Build out a brand new countdown now that the old one has been
                 // destroyed properly, setting to null then constructing.
                 countdowns[countdown] = null;
-                countdowns[countdown] = new Countdown(data.datetime, data.formatted, element);
+                countdowns[countdown] = new Countdown(data.datetime, null, element);
             }
         }
         // Countdown is already in a null state, go ahead and generate a
         // new one like we normally would.
         else {
-            countdowns[countdown] = new Countdown(data.datetime, data.formatted, element);
+            countdowns[countdown] = new Countdown(data.datetime, null, element);
         }
     }
 
